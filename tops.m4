@@ -87,7 +87,8 @@ USER_ID=$(id -u)
       chmod a+x /usr/local/bin/driftctl
 
   RUN /bin/sh -c "$(curl -fsSL https://raw.githubusercontent.com/turbot/steampipe/main/install.sh)" && \
-      chown -R tops:tops /home/tops
+
+  RUN chown -R tops:tops /home/tops
 
   USER tops
 
