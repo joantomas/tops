@@ -86,7 +86,8 @@ USER_ID=$(id -u)
   RUN curl -L https://github.com/cloudskiff/driftctl/releases/v${DRIFTCTL_VERSION}/download/driftctl_linux_amd64 -o /usr/local/bin/driftctl && \
       chmod a+x /usr/local/bin/driftctl
 
-  RUN /bin/sh -c "$(curl -fsSL https://raw.githubusercontent.com/turbot/steampipe/main/install.sh)"
+  RUN /bin/sh -c "$(curl -fsSL https://raw.githubusercontent.com/turbot/steampipe/main/install.sh)" && \
+      chown -R tops:tops /home/tops
 
   USER tops
 
