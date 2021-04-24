@@ -52,6 +52,11 @@ USER_ID=$(id -u)
       mv helm /usr/local/bin/ && \
       helm plugin install https://github.com/zendesk/helm-secrets
 
+  RUN curl -Ls https://github.com/camptocamp/helm-sops/releases/download/20201003-1/helm-sops_20201003-1_linux_amd64.tar.gz | tar -zx -C /usr/local/bin && \
+      mv /usr/local/bin/helm /usr/local/bin/_helm && \
+      mv /usr/local/bin/helm-sops /usr/local/bin/helm && \
+      chmod a+x /usr/local/bin/helm
+
   RUN curl -Ls https://storage.googleapis.com/kubernetes-release/release/v${K8S_VERSION}/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl && \
       chmod +x /usr/local/bin/kubectl && \
       echo 'source <(kubectl completion bash)' >> /home/tops/.bashrc && \
@@ -83,10 +88,15 @@ USER_ID=$(id -u)
 
   RUN pip3 install ansible boto3
 
-  RUN curl -L https://github.com/cloudskiff/driftctl/releases/v${DRIFTCTL_VERSION}/download/driftctl_linux_amd64 -o /usr/local/bin/driftctl && \
+  RUN curl -L https://github.com/cloudskiff/driftctl/releases/download/v${DRIFTCTL_VERSION}/driftctl_linux_amd64 -o /usr/local/bin/driftctl && \
       chmod a+x /usr/local/bin/driftctl
 
-  RUN /bin/sh -c "$(curl -fsSL https://raw.githubusercontent.com/turbot/steampipe/main/install.sh)" && \
+  RUN curl -Ls https://github.com/turbot/steampipe/releases/latest/download/steampipe_linux_amd64.tar.gz -o /tmp/steampipe.tar.gz && \
+      mkdir /tmp/steampipetemp && \
+      tar -xf /tmp/steampipe.tar.gz -C /tmp/steampipetemp && \
+      install /tmp/steampipetemp/steampipe /usr/local/bin/steampipe && \
+      chmod a+x /usr/local/bin/steampipe && \
+      rm -rf /tmp/steampipe*
 
   RUN chown -R tops:tops /home/tops
 
