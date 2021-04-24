@@ -16,8 +16,9 @@ exit 11  #)Created by argbash-init v2.10.0
 printf 'Value of --%s: %s\n' 'Environment file' "$_arg_env_file"
 printf "Value of '%s': %s\\n" 'Workspace path' "$_arg_workspace_path"
 CONTAINER_UUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)
+USER_ID=$(id -u)
 
-{ docker build --quiet -t tops -f - . <<-\EOF
+{ docker build --quiet -t tops --build-arg USER_ID=${USER_ID} -f - . <<-\EOF
   FROM ubuntu:18.04
 
   ARG GOLANG_VERSION=1.14
@@ -29,10 +30,13 @@ CONTAINER_UUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)
   ARG TERRAFORM_PROVIDER_KUBECTL_VERSION=1.3.1
   ARG TERRAFORM_PROVIDER_SOPS_VERSION=0.5.0
   ARG DRIFTCTL_VERSION=0.7.0
+  ARG USER_ID
+
+  RUN useradd -u ${USER_ID} -s /bin/bash -d /home/tops -m tops
 
   RUN apt-get update && \
       apt-get install -y curl wget git gcc software-properties-common bash-completion unzip jq vim groff python3-pip && \
-      echo 'source /usr/share/bash-completion/bash_completion' >> ~/.bashrc
+      echo 'source /usr/share/bash-completion/bash_completion' >> /home/tops/.bashrc
 
   RUN add-apt-repository --yes --update ppa:longsleep/golang-backports && \
       apt-get install -y golang-${GOLANG_VERSION}-go
@@ -50,29 +54,29 @@ CONTAINER_UUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)
 
   RUN curl -Ls https://storage.googleapis.com/kubernetes-release/release/v${K8S_VERSION}/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl && \
       chmod +x /usr/local/bin/kubectl && \
-      echo 'source <(kubectl completion bash)' >> ~/.bashrc && \
-      echo 'alias k=kubectl' >>~/.bashrc && \
-      echo 'complete -F __start_kubectl k' >>~/.bashrc
+      echo 'source <(kubectl completion bash)' >> /home/tops/.bashrc && \
+      echo 'alias k=kubectl' >> /home/tops/.bashrc && \
+      echo 'complete -F __start_kubectl k' >> /home/tops/.bashrc
 
   RUN curl -Ls https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip | gunzip > /usr/local/bin/terraform && \
       chmod +x /usr/local/bin/terraform && \
-      mkdir -p ~/.terraform.d/plugins && \
+      mkdir -p /home/tops/.terraform.d/plugins && \
       terraform -install-autocomplete
 
   RUN curl -Ls https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o /tmp/awscliv2.zip && \
       unzip -q /tmp/awscliv2.zip -d /tmp && \
       /tmp/aws/install && \
       rm -fr /tmp/aw* && \
-      echo "complete -C '/usr/local/bin/aws_completer' aws" >> ~/.bashrc
+      echo "complete -C '/usr/local/bin/aws_completer' aws" >> /home/tops/.bashrc
 
   RUN curl -Ls https://github.com/gavinbunney/terraform-provider-kubectl/releases/download/v${TERRAFORM_PROVIDER_KUBECTL_VERSION}/terraform-provider-kubectl-linux-amd64 \
-           -o ~/.terraform.d/plugins/terraform-provider-kubectl_v${TERRAFORM_PROVIDER_KUBECTL_VERSION} && \
-      chmod +x ~/.terraform.d/plugins/terraform-provider-kubectl_v${TERRAFORM_PROVIDER_KUBECTL_VERSION}
+           -o /home/tops/.terraform.d/plugins/terraform-provider-kubectl_v${TERRAFORM_PROVIDER_KUBECTL_VERSION} && \
+      chmod +x /home/tops/.terraform.d/plugins/terraform-provider-kubectl_v${TERRAFORM_PROVIDER_KUBECTL_VERSION}
 
   RUN curl -Ls https://github.com/carlpett/terraform-provider-sops/releases/download/v${TERRAFORM_PROVIDER_SOPS_VERSION}/terraform-provider-sops_v${TERRAFORM_PROVIDER_SOPS_VERSION}_linux_amd64.zip \
            -o /tmp/terraform-provider-sops.zip && \
-      unzip -j /tmp/terraform-provider-sops.zip -d ~/.terraform.d/plugins/ && \
-      chmod +x ~/.terraform.d/plugins/terraform-provider-sops_v${TERRAFORM_PROVIDER_SOPS_VERSION}
+      unzip -j /tmp/terraform-provider-sops.zip -d /home/tops/.terraform.d/plugins/ && \
+      chmod +x /home/tops/.terraform.d/plugins/terraform-provider-sops_v${TERRAFORM_PROVIDER_SOPS_VERSION}
 
   RUN curl -Ls https://github.com/derailed/k9s/releases/download/v${K9S_VERSION}/k9s_Linux_x86_64.tar.gz | tar -zx k9s && \
       mv k9s /usr/local/bin/
@@ -82,17 +86,25 @@ CONTAINER_UUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)
   RUN curl -L https://github.com/cloudskiff/driftctl/releases/v${DRIFTCTL_VERSION}/download/driftctl_linux_amd64 -o /usr/local/bin/driftctl && \
       chmod a+x /usr/local/bin/driftctl
 
+  RUN /bin/sh -c "$(curl -fsSL https://raw.githubusercontent.com/turbot/steampipe/main/install.sh)"
+
+  USER tops
+
+  RUN steampipe plugin install steampipe && \
+      steampipe plugin install aws
+
   WORKDIR /workspace
+
 EOF
 } && \
 docker run \
   --rm \
   -v ${_arg_workspace_path}:/workspace \
-  -v ${HOME}/.aws/credentials:/root/.aws/credentials:ro \
+  -v ${HOME}/.aws/credentials:/home/tops/.aws/credentials:ro \
   -v ${HOME}/.kube:/root/.kube:ro \
-  -v /run/user/1001/keyring/ssh:/my_ssh_auth_sock \
-  -v ${HOME}/.terraformrc:/root/.terraformrc:ro \
-  -v ${HOME}/.terraform.d/plugin-cache:/root/.terraform.d/plugin-cache \
+  -v /run/user/${USER_ID}/keyring/ssh:/my_ssh_auth_sock \
+  -v ${HOME}/.terraformrc:/home/tops/.terraformrc:ro \
+  -v ${HOME}/.terraform.d/plugin-cache:/home/tops/.terraform.d/plugin-cache \
   --env SSH_AUTH_SOCK=/my_ssh_auth_sock \
   --name tops-${CONTAINER_UUID} \
   -e SSH_AUTH_SOCK \
