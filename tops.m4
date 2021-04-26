@@ -34,7 +34,7 @@ USER_ID=$(id -u)
   ARG OPENSHIFT_VERSION=0.11.0 #https://github.com/kubernetes-client/python/issues/1333
   ARG KUBERNETES_PYTHON_VERSION=11.0.0
   ARG LOCALE_SETUP=en_US.UTF-8
-  ARG RKE_VERSION=1.2.7
+  ARG RKE_VERSION=1.1.4
   ARG USER_ID
 
   RUN useradd -u ${USER_ID} -s /bin/bash -d /home/tops -m tops
