@@ -133,7 +133,7 @@ docker run \
   --rm \
   -v ${_arg_workspace_path}:/workspace \
   -v ${HOME}/.aws/credentials:/home/tops/.aws/credentials:ro \
-  -v ${HOME}/.kube:/root/.kube:ro \
+  -v ${HOME}/.kube:/home/tops/.kube:ro \
   -v /run/user/${USER_ID}/keyring/ssh:/my_ssh_auth_sock \
   -v ${HOME}/.terraformrc:/home/tops/.terraformrc:ro \
   -v ${HOME}/.terraform.d/plugin-cache:/home/tops/.terraform.d/plugin-cache \
