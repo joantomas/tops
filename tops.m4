@@ -30,16 +30,25 @@ USER_ID=$(id -u)
   ARG TERRAFORM_PROVIDER_KUBECTL_VERSION=1.3.1
   ARG TERRAFORM_PROVIDER_SOPS_VERSION=0.5.0
   ARG DRIFTCTL_VERSION=0.7.0
+  ARG ANSIBLE_VERSION=3.3.0
+  ARG OPENSHIFT_VERSION=0.11.0 #https://github.com/kubernetes-client/python/issues/1333
+  ARG KUBERNETES_PYTHON_VERSION=11.0.0
+  ARG LOCALE_SETUP=en_US.UTF-8
+  ARG RKE_VERSION=1.2.7
   ARG USER_ID
 
   RUN useradd -u ${USER_ID} -s /bin/bash -d /home/tops -m tops
 
+
   RUN apt-get update && \
-      apt-get install -y curl wget git gcc software-properties-common bash-completion unzip jq vim groff python3-pip && \
+      apt-get install -y curl wget git gcc software-properties-common bash-completion \
+                         unzip jq vim groff python3-pip dnsutils iputils-ping locales && \
       echo 'source /usr/share/bash-completion/bash_completion' >> /home/tops/.bashrc
 
   RUN add-apt-repository --yes --update ppa:longsleep/golang-backports && \
       apt-get install -y golang-${GOLANG_VERSION}-go
+
+  RUN export LANG=${LOCALE_SETUP} && locale-gen ${LOCALE_SETUP}
 
   ENV GOPATH /go
   ENV PATH $GOPATH/bin:/usr/lib/go-${GOLANG_VERSION}/bin:$PATH
@@ -86,7 +95,15 @@ USER_ID=$(id -u)
   RUN curl -Ls https://github.com/derailed/k9s/releases/download/v${K9S_VERSION}/k9s_Linux_x86_64.tar.gz | tar -zx k9s && \
       mv k9s /usr/local/bin/
 
-  RUN pip3 install ansible boto3
+  RUN curl -Ls https://github.com/rancher/rke/releases/download/v${RKE_VERSION}/rke_linux-amd64 \
+           -o /usr/local/bin/rke && \
+           chmod a+x /usr/local/bin/rke
+
+  RUN pip3 install \
+              ansible==${ANSIBLE_VERSION} \
+              boto3 \
+              kubernetes==${KUBERNETES_PYTHON_VERSION} \
+              openshift==${OPENSHIFT_VERSION}
 
   RUN curl -L https://github.com/cloudskiff/driftctl/releases/download/v${DRIFTCTL_VERSION}/driftctl_linux_amd64 -o /usr/local/bin/driftctl && \
       chmod a+x /usr/local/bin/driftctl
@@ -97,6 +114,9 @@ USER_ID=$(id -u)
       install /tmp/steampipetemp/steampipe /usr/local/bin/steampipe && \
       chmod a+x /usr/local/bin/steampipe && \
       rm -rf /tmp/steampipe*
+
+  RUN mkdir -p /home/tops/.ssh && \
+      echo 'PubkeyAcceptedKeyTypes +ssh-dss-cert-v01@openssh.com' >> /home/tops/.ssh/config
 
   RUN chown -R tops:tops /home/tops
 
@@ -117,9 +137,9 @@ docker run \
   -v /run/user/${USER_ID}/keyring/ssh:/my_ssh_auth_sock \
   -v ${HOME}/.terraformrc:/home/tops/.terraformrc:ro \
   -v ${HOME}/.terraform.d/plugin-cache:/home/tops/.terraform.d/plugin-cache \
+  -v ${HOME}/.vault_password_file:/home/tops/.vault_password_file \
   --env SSH_AUTH_SOCK=/my_ssh_auth_sock \
   --name tops-${CONTAINER_UUID} \
-  -e SSH_AUTH_SOCK \
   --env-file $_arg_env_file \
   -ti \
   tops
