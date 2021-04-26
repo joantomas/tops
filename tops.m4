@@ -48,7 +48,7 @@ USER_ID=$(id -u)
   RUN add-apt-repository --yes --update ppa:longsleep/golang-backports && \
       apt-get install -y golang-${GOLANG_VERSION}-go
 
-  RUN export LANG=${LOCALE_SETUP} && locale-gen ${LOCALE_SETUP}
+  RUN locale-gen ${LOCALE_SETUP} && update-locale LANG=${LOCALE_SETUP}
 
   ENV GOPATH /go
   ENV PATH $GOPATH/bin:/usr/lib/go-${GOLANG_VERSION}/bin:$PATH
