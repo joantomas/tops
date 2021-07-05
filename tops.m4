@@ -18,8 +18,8 @@ printf "Value of '%s': %s\\n" 'Workspace path' "$_arg_workspace_path"
 CONTAINER_UUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)
 USER_ID=$(id -u)
 
-{ docker build --quiet -t tops --build-arg USER_ID=${USER_ID} -f - . <<-\EOF
-  FROM ubuntu:18.04
+{ docker build -t tops --build-arg USER_ID=${USER_ID} -f - . <<-\EOF
+  FROM ubuntu:20.04
 
   ARG GOLANG_VERSION=1.14
   ARG SOPS_VERSION=3.5.0
@@ -29,7 +29,7 @@ USER_ID=$(id -u)
   ARG TERRAFORM_VERSION=0.14.6
   ARG TERRAFORM_PROVIDER_KUBECTL_VERSION=1.3.1
   ARG TERRAFORM_PROVIDER_SOPS_VERSION=0.5.0
-  ARG DRIFTCTL_VERSION=0.7.0
+  ARG DRIFTCTL_VERSION=0.9.0
   ARG ANSIBLE_VERSION=3.3.0
   ARG OPENSHIFT_VERSION=0.11.0 #https://github.com/kubernetes-client/python/issues/1333
   ARG KUBERNETES_PYTHON_VERSION=11.0.0
@@ -39,17 +39,19 @@ USER_ID=$(id -u)
 
   RUN useradd -u ${USER_ID} -s /bin/bash -d /home/tops -m tops
 
+  RUN apt-get update && \
+      apt-get install -y locales tzdata && \
+      locale-gen ${LOCALE_SETUP} && \
+      echo "export LC_ALL=${LOCALE_SETUP}" >> /home/tops/.bashrc
 
   RUN apt-get update && \
       apt-get install -y curl wget git gcc software-properties-common bash-completion \
-                         unzip jq vim groff python3-pip dnsutils iputils-ping locales && \
+                         unzip jq vim groff python3-pip dnsutils iputils-ping \
+                         rsync lastpass-cli && \
       echo 'source /usr/share/bash-completion/bash_completion' >> /home/tops/.bashrc
 
   RUN add-apt-repository --yes --update ppa:longsleep/golang-backports && \
       apt-get install -y golang-${GOLANG_VERSION}-go
-
-  RUN locale-gen ${LOCALE_SETUP} && \
-      echo "export LC_ALL=${LOCALE_SETUP}" >> /home/tops/.bashrc
 
   ENV GOPATH /go
   ENV PATH $GOPATH/bin:/usr/lib/go-${GOLANG_VERSION}/bin:$PATH
