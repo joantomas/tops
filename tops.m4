@@ -34,7 +34,9 @@ USER_ID=$(id -u)
   ARG OPENSHIFT_VERSION=0.11.0 #https://github.com/kubernetes-client/python/issues/1333
   ARG KUBERNETES_PYTHON_VERSION=11.0.0
   ARG LOCALE_SETUP=en_US.UTF-8
-  ARG RKE_VERSION=1.1.4
+  ARG RKE_VERSION=1.2.11
+  ARG ISTIO_VERSION=1.11.2
+  ARG CALICOCTL_VERSION=v3.19.1
   ARG USER_ID
 
   RUN useradd -u ${USER_ID} -s /bin/bash -d /home/tops -m tops
@@ -117,6 +119,15 @@ USER_ID=$(id -u)
       install /tmp/steampipetemp/steampipe /usr/local/bin/steampipe && \
       chmod a+x /usr/local/bin/steampipe && \
       rm -rf /tmp/steampipe*
+
+  RUN curl -L https://github.com/istio/istio/releases/download/${ISTIO_VERSION}/istio-${ISTIO_VERSION}-linux-amd64.tar.gz | tar -zx -C /usr/local/src && \
+      echo "export PATH=$PATH:/usr/local/src/istio-${ISTIO_VERSION}/bin" >> /home/tops/.bashrc && \
+      chmod a+rx /usr/local/src/istio-${ISTIO_VERSION} && chmod a+rx /usr/local/src/istio-${ISTIO_VERSION}/bin && \
+      chmod a+rx /usr/local/src/istio-${ISTIO_VERSION}/bin/istioctl && \
+      ln -s /usr/local/src/istio-${ISTIO_VERSION}/bin/istioctl /usr/local/bin/istioctl
+
+  RUN curl -Ls "https://github.com/projectcalico/calicoctl/releases/download/${CALICOCTL_VERSION}/calicoctl" -o /usr/local/bin/calicoctl && \
+      chmod a+rx /usr/local/bin/calicoctl
 
   RUN mkdir -p /home/tops/.ssh && \
       echo 'PubkeyAcceptedKeyTypes +ssh-dss-cert-v01@openssh.com' >> /home/tops/.ssh/config
