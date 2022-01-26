@@ -30,7 +30,8 @@ USER_ID=$(id -u)
   ARG TERRAFORM_PROVIDER_KUBECTL_VERSION=1.3.1
   ARG TERRAFORM_PROVIDER_SOPS_VERSION=0.5.0
   ARG DRIFTCTL_VERSION=0.9.0
-  ARG ANSIBLE_VERSION=3.3.0
+#  ARG ANSIBLE_VERSION=3.3.0
+  ARG ANSIBLE_VERSION=2.10.7
   ARG OPENSHIFT_VERSION=0.11.0 #https://github.com/kubernetes-client/python/issues/1333
   ARG KUBERNETES_PYTHON_VERSION=11.0.0
   ARG LOCALE_SETUP=en_US.UTF-8
@@ -61,6 +62,7 @@ USER_ID=$(id -u)
       rm -fr /tmp/sops.deb
 
   RUN curl -Ls https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz | tar -zx -f - linux-amd64/helm --strip-components=1 && \
+      chown tops:tops helm && \
       mv helm /usr/local/bin/ && \
       helm plugin install https://github.com/zendesk/helm-secrets
 
@@ -73,6 +75,8 @@ USER_ID=$(id -u)
       chmod +x /usr/local/bin/kubectl && \
       echo 'source <(kubectl completion bash)' >> /home/tops/.bashrc && \
       echo 'alias k=kubectl' >> /home/tops/.bashrc && \
+      echo 'export do="--dry-run=client -o yaml"' >> /home/tops/.bashrc && \
+      echo 'export now="--force --grace-period=0"' >> /home/tops/.bashrc && \
       echo 'complete -F __start_kubectl k' >> /home/tops/.bashrc
 
   RUN curl -Ls https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip | gunzip > /usr/local/bin/terraform && \
@@ -85,6 +89,10 @@ USER_ID=$(id -u)
       /tmp/aws/install && \
       rm -fr /tmp/aw* && \
       echo "complete -C '/usr/local/bin/aws_completer' aws" >> /home/tops/.bashrc
+
+  RUN curl -o aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/amd64/aws-iam-authenticator && \
+      chmod +x aws-iam-authenticator && \
+      mv aws-iam-authenticator /usr/local/bin/
 
   RUN curl -Ls https://github.com/gavinbunney/terraform-provider-kubectl/releases/download/v${TERRAFORM_PROVIDER_KUBECTL_VERSION}/terraform-provider-kubectl-linux-amd64 \
            -o /home/tops/.terraform.d/plugins/terraform-provider-kubectl_v${TERRAFORM_PROVIDER_KUBECTL_VERSION} && \
