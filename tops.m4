@@ -21,22 +21,23 @@ USER_ID=$(id -u)
 { docker build -t tops --build-arg USER_ID=${USER_ID} -f - . <<-\EOF
   FROM ubuntu:20.04
 
+  ARG ANSIBLE_VERSION=3.3.0
+  ARG CALICOCTL_VERSION=v3.19.1
+  ARG DRIFTCTL_VERSION=0.9.0
   ARG GOLANG_VERSION=1.14
-  ARG SOPS_VERSION=3.5.0
   ARG HELM_VERSION=3.5.4
-  ARG K8S_VERSION=1.19.0
-  ARG K9S_VERSION=0.19.5
-  ARG TERRAFORM_VERSION=0.14.6
+  ARG ISTIO_VERSION=1.11.2
+  ARG K9S_VERSION=0.25.18
+  ARG KUBECTL_VERSION=1.20.9
+  ARG KUBERNETES_PYTHON_VERSION=11.0.0
+  ARG KUSTOMIZE_VERSION=v3
+  ARG LOCALE_SETUP=en_US.UTF-8
+  ARG OPENSHIFT_VERSION=0.11.0 #https://github.com/kubernetes-client/python/issues/1333
+  ARG RKE_VERSION=1.2.11
+  ARG SOPS_VERSION=3.5.0
   ARG TERRAFORM_PROVIDER_KUBECTL_VERSION=1.3.1
   ARG TERRAFORM_PROVIDER_SOPS_VERSION=0.5.0
-  ARG DRIFTCTL_VERSION=0.9.0
-  ARG ANSIBLE_VERSION=3.3.0
-  ARG OPENSHIFT_VERSION=0.11.0 #https://github.com/kubernetes-client/python/issues/1333
-  ARG KUBERNETES_PYTHON_VERSION=11.0.0
-  ARG LOCALE_SETUP=en_US.UTF-8
-  ARG RKE_VERSION=1.2.11
-  ARG ISTIO_VERSION=1.11.2
-  ARG CALICOCTL_VERSION=v3.19.1
+  ARG TERRAFORM_VERSION=0.14.6
   ARG USER_ID
 
   RUN useradd -u ${USER_ID} -s /bin/bash -d /home/tops -m tops
@@ -72,7 +73,7 @@ USER_ID=$(id -u)
       mv /usr/local/bin/helm-sops /usr/local/bin/helm && \
       chmod a+x /usr/local/bin/helm
 
-  RUN curl -Ls https://storage.googleapis.com/kubernetes-release/release/v${K8S_VERSION}/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl && \
+  RUN curl -Ls https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl && \
       chmod +x /usr/local/bin/kubectl && \
       echo 'source <(kubectl completion bash)' >> /home/tops/.bashrc && \
       echo 'alias k=kubectl' >> /home/tops/.bashrc && \
@@ -135,6 +136,8 @@ USER_ID=$(id -u)
 
   RUN curl -Ls "https://github.com/projectcalico/calicoctl/releases/download/${CALICOCTL_VERSION}/calicoctl" -o /usr/local/bin/calicoctl && \
       chmod a+rx /usr/local/bin/calicoctl
+
+  RUN GOBIN=/usr/local/bin/ GO111MODULE=on go get sigs.k8s.io/kustomize/kustomize/${KUSTOMIZE_VERSION}
 
   RUN mkdir -p /home/tops/.ssh && \
       echo 'PubkeyAcceptedKeyTypes +ssh-dss-cert-v01@openssh.com' >> /home/tops/.ssh/config
