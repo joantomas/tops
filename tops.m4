@@ -50,7 +50,7 @@ USER_ID=$(id -u)
   RUN apt-get update && \
       apt-get install -y curl wget git gcc software-properties-common bash-completion \
                          unzip jq vim groff python3-pip dnsutils iputils-ping \
-                         rsync lastpass-cli python3-dnspython && \
+                         rsync lastpass-cli python3-dnspython python3-passlib && \
       echo 'source /usr/share/bash-completion/bash_completion' >> /home/tops/.bashrc
 
   RUN add-apt-repository --yes --update ppa:longsleep/golang-backports && \
