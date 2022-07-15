@@ -29,10 +29,10 @@ USER_ID=$(id -u)
   ARG ISTIO_VERSION=1.11.2
   ARG KUBECTL_VERSION=1.20.9
   ARG K9S_VERSION=0.19.5
-  ARG KUBERNETES_PYTHON_VERSION=11.0.0
+  ARG KUBERNETES_PYTHON_VERSION=12.0.1
   ARG KUSTOMIZE_VERSION=v3
   ARG LOCALE_SETUP=en_US.UTF-8
-  ARG OPENSHIFT_VERSION=0.11.0 #https://github.com/kubernetes-client/python/issues/1333
+  ARG OPENSHIFT_VERSION=0.13.1 #https://github.com/kubernetes-client/python/issues/1333
   ARG RKE_VERSION=1.2.11
   ARG SOPS_VERSION=3.5.0
   ARG TERRAFORM_PROVIDER_KUBECTL_VERSION=1.3.1
@@ -50,7 +50,7 @@ USER_ID=$(id -u)
   RUN apt-get update && \
       apt-get install -y curl wget git gcc software-properties-common bash-completion \
                          unzip jq vim groff python3-pip dnsutils iputils-ping \
-                         rsync lastpass-cli python3-dnspython && \
+                         rsync lastpass-cli python3-dnspython python3-passlib python3-jsonpatch && \
       echo 'source /usr/share/bash-completion/bash_completion' >> /home/tops/.bashrc
 
   RUN add-apt-repository --yes --update ppa:longsleep/golang-backports && \
@@ -146,6 +146,8 @@ USER_ID=$(id -u)
 
   USER tops
 
+  RUN mkdir -p ~/.aws/cli
+
   RUN steampipe plugin install steampipe && \
       steampipe plugin install aws
 
@@ -157,6 +159,7 @@ docker run \
   --rm \
   -v ${_arg_workspace_path}:/workspace \
   -v ${HOME}/.aws/credentials:/home/tops/.aws/credentials:ro \
+  -v ${HOME}/.aws/config:/home/tops/.aws/config:ro \
   -v ${HOME}/.kube:/home/tops/.kube:ro \
   -v ${SSH_AUTH_SOCK}:/my_ssh_auth_sock \
   -v ${HOME}/.terraformrc:/home/tops/.terraformrc:ro \
