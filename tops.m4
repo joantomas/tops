@@ -15,7 +15,8 @@ exit 11  #)Created by argbash-init v2.10.0
 # For example:
 printf 'Value of --%s: %s\n' 'Environment file' "$_arg_env_file"
 printf "Value of '%s': %s\\n" 'Workspace path' "$_arg_workspace_path"
-CONTAINER_UUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)
+
+CONTAINER_UUID=$(cat /dev/urandom | LC_ALL=C tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)
 USER_ID=$(id -u)
 
 { docker build -t tops --build-arg USER_ID=${USER_ID} -f - . <<-\EOF
