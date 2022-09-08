@@ -177,7 +177,7 @@ docker run \
   -v ${HOME}/.terraformrc:/home/tops/.terraformrc:ro \
   -v ${HOME}/.terraform.d/plugin-cache:/home/tops/.terraform.d/plugin-cache \
   -v ${HOME}/.vault_password_file:/home/tops/.vault_password_file \
-  -v ${SSH_AUTH_SOCK}:${MY_SSH_AUTH_SOCK} \
+  -v ${SSH_AUTH_SOCK}:${MY_SSH_AUTH_SOCK}:rw \
   --env SSH_AUTH_SOCK=${MY_SSH_AUTH_SOCK} \
   --name tops-${CONTAINER_UUID} \
   --env-file $_arg_env_file \
