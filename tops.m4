@@ -16,6 +16,18 @@ exit 11  #)Created by argbash-init v2.10.0
 printf 'Value of --%s: %s\n' 'Environment file' "$_arg_env_file"
 printf "Value of '%s': %s\\n" 'Workspace path' "$_arg_workspace_path"
 
+case "$(uname -s)" in
+
+    Darwin)
+        SSH_AUTH_SOCK="/run/host-services/ssh-auth.sock"
+        MY_SSH_AUTH_SOCK="/run/host-services/ssh-auth.sock"
+        ;;
+
+    *)
+        MY_SSH_AUTH_SOCK="/my_ssh_auth_sock"
+        ;;
+esac
+
 CONTAINER_UUID=$(cat /dev/urandom | LC_ALL=C tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)
 USER_ID=$(id -u)
 
@@ -162,11 +174,11 @@ docker run \
   -v ${HOME}/.aws/credentials:/home/tops/.aws/credentials:ro \
   -v ${HOME}/.aws/config:/home/tops/.aws/config:ro \
   -v ${HOME}/.kube:/home/tops/.kube:ro \
-  -v ${SSH_AUTH_SOCK}:/my_ssh_auth_sock \
   -v ${HOME}/.terraformrc:/home/tops/.terraformrc:ro \
   -v ${HOME}/.terraform.d/plugin-cache:/home/tops/.terraform.d/plugin-cache \
   -v ${HOME}/.vault_password_file:/home/tops/.vault_password_file \
-  --env SSH_AUTH_SOCK=/my_ssh_auth_sock \
+  -v ${SSH_AUTH_SOCK}:${MY_SSH_AUTH_SOCK} \
+  --env SSH_AUTH_SOCK=${MY_SSH_AUTH_SOCK} \
   --name tops-${CONTAINER_UUID} \
   --env-file $_arg_env_file \
   -ti \
