@@ -33,6 +33,7 @@ case "$(uname -s)" in
         ;;
 esac
 
+test -f $_arg_env_file || touch $_arg_env_file && \
 { docker build -t tops --build-arg USER_ID=${USER_ID} -f - . <<-\EOF
   FROM ubuntu:20.04
 
