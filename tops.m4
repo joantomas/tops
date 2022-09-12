@@ -14,7 +14,7 @@ exit 11  #)Created by argbash-init v2.10.0
 # vvv  PLACE YOUR CODE HERE  vvv
 # For example:
 printf 'Value of --%s: %s\n' 'Environment file' "$_arg_env_file"
-printf "Value of '%s': %s\\n" 'Workspace path' "$_arg_workspace_path"
+printf "Value of '%s': %s\n" 'Workspace path' "$_arg_workspace_path"
 
 CONTAINER_UUID=$(cat /dev/urandom | LC_ALL=C tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)
 CONTAINER_NAME="tops-${CONTAINER_UUID}"
@@ -25,7 +25,7 @@ case "$(uname -s)" in
     Darwin)
         SSH_AUTH_SOCK="/run/host-services/ssh-auth.sock"
         MY_SSH_AUTH_SOCK="/run/host-services/ssh-auth.sock"
-        printf "Command to fix SSH: docker exec -it --user=root %s bash -c 'chown 0777 ${SSH_AUTH_SOCK}'\\n" "${CONTAINER_NAME}"
+        printf "Command to fix SSH: docker exec -it --user=root %s bash -c 'chown 0777 ${SSH_AUTH_SOCK}'\n" "${CONTAINER_NAME}"
         ;;
 
     *)
