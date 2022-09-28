@@ -184,6 +184,7 @@ docker run \
   --env SSH_AUTH_SOCK=${MY_SSH_AUTH_SOCK} \
   --name ${CONTAINER_NAME} \
   --env-file $_arg_env_file \
+  --network host \
   -ti \
   tops
 # ^^^  TERMINATE YOUR CODE BEFORE THE BOTTOM ARGBASH MARKER  ^^^
