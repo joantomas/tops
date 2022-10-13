@@ -16,6 +16,7 @@ exit 11  #)Created by argbash-init v2.10.0
 printf 'Value of --%s: %s\n' 'Environment file' "$_arg_env_file"
 printf "Value of '%s': %s\n" 'Workspace path' "$_arg_workspace_path"
 
+HISTORY_FILE="${HOME}/.bash_history"
 CONTAINER_UUID=$(cat /dev/urandom | LC_ALL=C tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)
 CONTAINER_NAME="tops-${CONTAINER_UUID}"
 USER_ID=$(id -u)
@@ -34,6 +35,7 @@ case "$(uname -s)" in
 esac
 
 test -f $_arg_env_file || touch $_arg_env_file && \
+test -f $HISTORY_FILE || touch $HISTORY_FILE && \
 { docker build -t tops --build-arg USER_ID=${USER_ID} -f - . <<-\EOF
   FROM ubuntu:20.04
 
@@ -180,8 +182,10 @@ docker run \
   -v ${HOME}/.terraformrc:/home/tops/.terraformrc:ro \
   -v ${HOME}/.terraform.d/plugin-cache:/home/tops/.terraform.d/plugin-cache \
   -v ${HOME}/.vault_password_file:/home/tops/.vault_password_file \
+  -v ${HISTORY_FILE}:/home/tops/.bash_history:rw \
   -v ${SSH_AUTH_SOCK}:${MY_SSH_AUTH_SOCK}:rw \
   --env SSH_AUTH_SOCK=${MY_SSH_AUTH_SOCK} \
+  --env PROMPT_COMMAND='history -a' \
   --name ${CONTAINER_NAME} \
   --env-file $_arg_env_file \
   -ti \
