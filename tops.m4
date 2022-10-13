@@ -25,7 +25,7 @@ case "$(uname -s)" in
     Darwin)
         SSH_AUTH_SOCK="/run/host-services/ssh-auth.sock"
         MY_SSH_AUTH_SOCK="/run/host-services/ssh-auth.sock"
-        printf "Command to fix SSH: docker exec -it --user=root %s bash -c 'chown 0777 %s'\n" "${CONTAINER_NAME}" "${SSH_AUTH_SOCK}"
+        printf "Command to fix SSH: docker exec -it --user=root %s bash -c 'chmod 0777 %s'\n" "${CONTAINER_NAME}" "${SSH_AUTH_SOCK}"
         ;;
 
     *)
