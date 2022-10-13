@@ -132,6 +132,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
 
   RUN pip3 install \
               ansible==${ANSIBLE_VERSION} \
+              ansible-lint \
               boto3 \
               kubernetes==${KUBERNETES_PYTHON_VERSION} \
               openshift==${OPENSHIFT_VERSION}
