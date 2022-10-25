@@ -159,7 +159,8 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   RUN GOBIN=/usr/local/bin/ GO111MODULE=on go get sigs.k8s.io/kustomize/kustomize/${KUSTOMIZE_VERSION}
 
   RUN mkdir -p /home/tops/.ssh && \
-      echo 'PubkeyAcceptedKeyTypes +ssh-dss-cert-v01@openssh.com' >> /home/tops/.ssh/config
+      echo 'PubkeyAcceptedKeyTypes +ssh-dss-cert-v01@openssh.com' >> /home/tops/.ssh/config && \
+      ssh-keyscan -t ecdsa-sha2-nistp256 github.com >> /home/tops/.ssh/known_hosts
 
   RUN chown -R tops:tops /home/tops
 
