@@ -68,7 +68,8 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   RUN apt-get update && \
       apt-get install -y curl wget git gcc software-properties-common bash-completion \
                          unzip jq vim groff python3-pip dnsutils iputils-ping \
-                         rsync lastpass-cli python3-dnspython python3-passlib python3-jsonpatch && \
+                         rsync lastpass-cli python3-dnspython python3-passlib \
+                         python3-jsonpatch python3-netaddr && \
       echo 'source /usr/share/bash-completion/bash_completion' >> /home/tops/.bashrc
 
   RUN add-apt-repository --yes --update ppa:longsleep/golang-backports && \
