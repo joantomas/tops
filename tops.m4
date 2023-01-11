@@ -96,6 +96,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       chmod +x /usr/local/bin/kubectl && \
       echo 'source <(kubectl completion bash)' >> /home/tops/.bashrc && \
       echo 'alias k=kubectl' >> /home/tops/.bashrc && \
+      echo "alias kn='kubectl config set-context --current --namespace'" >> /home/tops/.bashrc && \
       echo 'export do="--dry-run=client -o yaml"' >> /home/tops/.bashrc && \
       echo 'export now="--force --grace-period=0"' >> /home/tops/.bashrc && \
       echo 'complete -F __start_kubectl k' >> /home/tops/.bashrc
