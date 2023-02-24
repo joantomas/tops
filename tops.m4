@@ -39,7 +39,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
 { docker build -t tops --build-arg USER_ID=${USER_ID} -f - . <<-\EOF
   FROM ubuntu:22.04
 
-  ARG ANSIBLE_VERSION=7.1.0
+  ARG ANSIBLE_VERSION=5.10.0
   ARG CALICOCTL_VERSION=v3.24.5
   ARG DRIFTCTL_VERSION=0.9.0
   ARG GOLANG_VERSION=1.18
@@ -155,7 +155,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       chmod a+rx /usr/local/src/istio-${ISTIO_VERSION}/bin/istioctl && \
       ln -s /usr/local/src/istio-${ISTIO_VERSION}/bin/istioctl /usr/local/bin/istioctl
 
-  RUN curl -Ls "https://github.com/projectcalico/calicoctl/releases/download/${CALICOCTL_VERSION}/calicoctl" -o /usr/local/bin/calicoctl && \
+  RUN curl -Ls "https://github.com/projectcalico/calico/releases/download//${CALICOCTL_VERSION}/calicoctl-linux-amd64" -o /usr/local/bin/calicoctl && \
       chmod a+rx /usr/local/bin/calicoctl
 
   RUN curl -L https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz | tar -zx -C /usr/local/bin
