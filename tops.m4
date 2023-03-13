@@ -37,18 +37,18 @@ esac
 test -f $_arg_env_file || touch $_arg_env_file && \
 test -f $HISTORY_FILE || touch $HISTORY_FILE && \
 { docker build -t tops --build-arg USER_ID=${USER_ID} -f - . <<-\EOF
-  FROM ubuntu:20.04
+  FROM ubuntu:22.04
 
-  ARG ANSIBLE_VERSION=5.4.0
+  ARG ANSIBLE_VERSION=7.1.0
   ARG CALICOCTL_VERSION=v3.19.1
   ARG DRIFTCTL_VERSION=0.9.0
-  ARG GOLANG_VERSION=1.14
+  ARG GOLANG_VERSION=1.18
   ARG HELM_VERSION=3.5.4
   ARG ISTIO_VERSION=1.11.2
   ARG KUBECTL_VERSION=1.20.9
   ARG K9S_VERSION=0.19.5
   ARG KUBERNETES_PYTHON_VERSION=12.0.1
-  ARG KUSTOMIZE_VERSION=v3
+  ARG KUSTOMIZE_VERSION=v3.10.0
   ARG LOCALE_SETUP=en_US.UTF-8
   ARG OPENSHIFT_VERSION=0.13.1 #https://github.com/kubernetes-client/python/issues/1333
   ARG RKE_VERSION=1.2.11
@@ -72,8 +72,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
                          python3-jsonpatch python3-netaddr && \
       echo 'source /usr/share/bash-completion/bash_completion' >> /home/tops/.bashrc
 
-  RUN add-apt-repository --yes --update ppa:longsleep/golang-backports && \
-      apt-get install -y golang-${GOLANG_VERSION}-go
+  RUN apt-get install -y golang-${GOLANG_VERSION}-go
 
   ENV GOPATH /go
   ENV PATH $GOPATH/bin:/usr/lib/go-${GOLANG_VERSION}/bin:$PATH
@@ -158,7 +157,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   RUN curl -Ls "https://github.com/projectcalico/calicoctl/releases/download/${CALICOCTL_VERSION}/calicoctl" -o /usr/local/bin/calicoctl && \
       chmod a+rx /usr/local/bin/calicoctl
 
-  RUN GOBIN=/usr/local/bin/ GO111MODULE=on go get sigs.k8s.io/kustomize/kustomize/${KUSTOMIZE_VERSION}
+  RUN curl -L https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz | tar -zx -C /usr/local/bin
 
   RUN mkdir -p /home/tops/.ssh && \
       echo 'PubkeyAcceptedKeyTypes +ssh-dss-cert-v01@openssh.com' >> /home/tops/.ssh/config && \
