@@ -166,8 +166,6 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
 
   RUN chown -R tops:tops /home/tops
 
-  ENV PATH /home/tops/.local/bin:$PATH
-
   USER tops
 
   RUN mkdir -p ~/.aws/cli
