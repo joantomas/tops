@@ -136,7 +136,8 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
               ansible-lint \
               boto3 \
               kubernetes==${KUBERNETES_PYTHON_VERSION} \
-              openshift==${OPENSHIFT_VERSION}
+              openshift==${OPENSHIFT_VERSION} \
+              yq
 
   RUN curl -L https://github.com/cloudskiff/driftctl/releases/download/v${DRIFTCTL_VERSION}/driftctl_linux_amd64 -o /usr/local/bin/driftctl && \
       chmod a+x /usr/local/bin/driftctl
@@ -164,6 +165,8 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       ssh-keyscan -t ecdsa-sha2-nistp256 github.com >> /home/tops/.ssh/known_hosts
 
   RUN chown -R tops:tops /home/tops
+
+  ENV PATH /home/tops/.local/bin:$PATH
 
   USER tops
 
