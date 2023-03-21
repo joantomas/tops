@@ -155,7 +155,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       chmod a+rx /usr/local/src/istio-${ISTIO_VERSION}/bin/istioctl && \
       ln -s /usr/local/src/istio-${ISTIO_VERSION}/bin/istioctl /usr/local/bin/istioctl
 
-  RUN curl -Ls "https://github.com/projectcalico/calico/releases/download//${CALICOCTL_VERSION}/calicoctl-linux-amd64" -o /usr/local/bin/calicoctl && \
+  RUN curl -Ls "https://github.com/projectcalico/calico/releases/download/${CALICOCTL_VERSION}/calicoctl-linux-amd64" -o /usr/local/bin/calicoctl && \
       chmod a+rx /usr/local/bin/calicoctl
 
   RUN curl -L https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz | tar -zx -C /usr/local/bin
