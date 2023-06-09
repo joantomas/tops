@@ -40,6 +40,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   FROM ubuntu:22.04
 
   ARG ANSIBLE_VERSION=5.10.0
+  ARG ANSIBLE_COMMUNITY_GENERAL_COLLECTION_VERSION=6.1.0
   ARG CALICOCTL_VERSION=v3.25.1
   ARG DRIFTCTL_VERSION=0.9.0
   ARG GOLANG_VERSION=1.18
@@ -170,7 +171,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
 
   USER tops
 
-  RUN ansible-galaxy collection install community.general:==6.1.0
+  RUN ansible-galaxy collection install community.general:==${ANSIBLE_COMMUNITY_GENERAL_COLLECTION_VERSION}
 
   RUN mkdir -p ~/.aws/cli
 
