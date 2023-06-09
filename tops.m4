@@ -164,8 +164,6 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       echo 'PubkeyAcceptedKeyTypes +ssh-dss-cert-v01@openssh.com' >> /home/tops/.ssh/config && \
       ssh-keyscan -t ecdsa-sha2-nistp256 github.com >> /home/tops/.ssh/known_hosts
 
-  RUN rm -rf /usr/local/lib/python3.10/dist-packages/ansible_collections/community/general
-
   RUN chown -R tops:tops /home/tops
 
   USER tops
