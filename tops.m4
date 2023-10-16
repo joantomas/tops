@@ -37,6 +37,28 @@ esac
 test -f $_arg_env_file || touch $_arg_env_file && \
 test -f $HISTORY_FILE || touch $HISTORY_FILE && \
 { docker build -t tops --build-arg USER_ID=${USER_ID} -f - . <<-\EOF
+  FROM ubuntu:22.04 AS builder
+  ARG LASTPASS_VERSION=1.3.6
+  RUN apt-get update && \
+      apt-get -y install \
+              curl \
+              bash-completion \
+              build-essential \
+              cmake \
+              libcurl4  \
+              libcurl4-openssl-dev  \
+              libssl-dev  \
+              libssl3 \
+              libxml2 \
+              libxml2-dev  \
+              pkg-config \
+              ca-certificates \
+              xclip
+  RUN mkdir /tmp/lastpass-cli && \
+      curl -L https://github.com/lastpass/lastpass-cli/releases/download/v${LASTPASS_VERSION}/lastpass-cli-${LASTPASS_VERSION}.tar.gz | \
+      tar -zx -C /tmp/lastpass-cli --strip-components=1
+  RUN cd /tmp/lastpass-cli && export CFLAGS="-fcommon" && make
+
   FROM ubuntu:22.04
 
   ARG ANSIBLE_VERSION=5.10.0
@@ -69,7 +91,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   RUN apt-get update && \
       apt-get install -y curl wget git gcc software-properties-common bash-completion \
                          unzip jq vim groff python3-pip dnsutils iputils-ping \
-                         rsync lastpass-cli python3-dnspython python3-passlib \
+                         rsync python3-dnspython python3-passlib \
                          python3-jsonpatch python3-netaddr && \
       echo 'source /usr/share/bash-completion/bash_completion' >> /home/tops/.bashrc
 
@@ -178,10 +200,12 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   RUN steampipe plugin install steampipe && \
       steampipe plugin install aws
 
+  COPY --from=builder /tmp/lastpass-cli/build/lpass /usr/bin/
   WORKDIR /workspace
 
 EOF
 } && \
+echo "ContainerName ${CONTAINER_NAME}" && \
 docker run \
   --rm \
   -v ${_arg_workspace_path}:/workspace \
@@ -198,6 +222,7 @@ docker run \
   --name ${CONTAINER_NAME} \
   --env-file $_arg_env_file \
   -ti \
+  -p 9090-9095 \
   tops
 # ^^^  TERMINATE YOUR CODE BEFORE THE BOTTOM ARGBASH MARKER  ^^^
 
