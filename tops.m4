@@ -189,6 +189,18 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
 
   RUN rm -rf /usr/local/lib/python3.10/dist-packages/ansible_collections/community/general
 
+  RUN curl -Ls "https://github.com/Shopify/kubeaudit/releases/download/v0.22.1/kubeaudit_0.22.1_linux_amd64.tar.gz" -o /tmp/kubeaudit_0.22.1_linux_amd64.tar.gz && \
+      cd /tmp && \
+      tar zxvf kubeaudit_0.22.1_linux_amd64.tar.gz && \
+      mv kubeaudit /usr/local/bin/kubeaudit
+
+  RUN curl -L https://github.com/argoproj/argo-workflows/releases/download/v3.5.4/argo-linux-amd64.gz -o /tmp/argo-linux-amd64.gz && \
+      cd /tmp && \
+      gzip -d argo-linux-amd64.gz && \
+      chmod +x /tmp/argo-linux-amd64 && \
+      mv /tmp/argo-linux-amd64 /usr/local/bin/argo
+
+
   RUN chown -R tops:tops /home/tops
 
   USER tops
