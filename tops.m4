@@ -79,6 +79,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   ARG TERRAFORM_PROVIDER_KUBECTL_VERSION=1.3.1
   ARG TERRAFORM_PROVIDER_SOPS_VERSION=0.5.0
   ARG TERRAFORM_VERSION=0.14.6
+  ARG GCLOUD_VERSION=473.0.0-0
   ARG USER_ID
 
   RUN useradd -u ${USER_ID} -s /bin/bash -d /home/tops -m tops
@@ -200,6 +201,10 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       chmod +x /tmp/argo-linux-amd64 && \
       mv /tmp/argo-linux-amd64 /usr/local/bin/argo
 
+  RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && \
+      curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg && \
+      apt-get update -y && \
+      apt-get install -y google-cloud-cli=${GCLOUD_VERSION}
 
   RUN chown -R tops:tops /home/tops
 
@@ -223,10 +228,12 @@ docker run \
   -v ${_arg_workspace_path}:/workspace \
   -v ${HOME}/.aws/credentials:/home/tops/.aws/credentials:ro \
   -v ${HOME}/.aws/config:/home/tops/.aws/config:ro \
+  -v ${HOME}/.config/gcloud:/home/tops/.config/gcloud:ro \
   -v ${HOME}/.kube:/home/tops/.kube:ro \
   -v ${HOME}/.terraformrc:/home/tops/.terraformrc:ro \
   -v ${HOME}/.terraform.d/plugin-cache:/home/tops/.terraform.d/plugin-cache \
   -v ${HOME}/.vault_password_file:/home/tops/.vault_password_file \
+  -v ${HOME}/.terraformStatesBucketGCS.json:/home/tops/.terraformStatesBucketGCS.json:ro \
   -v ${HISTORY_FILE}:/home/tops/.bash_history:rw \
   -v ${SSH_AUTH_SOCK}:${MY_SSH_AUTH_SOCK}:rw \
   --env SSH_AUTH_SOCK=${MY_SSH_AUTH_SOCK} \

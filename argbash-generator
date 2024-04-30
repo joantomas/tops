@@ -1,3 +1,4 @@
 #!/bin/bash
 mkdir -p dist
 docker run --rm -v "$(pwd):/work" -u "$(id -u):$(id -g)" matejak/argbash tops.m4 -o dist/tops.sh
+docker run --rm -v "$(pwd):/work" -u "$(id -u):$(id -g)" matejak/argbash tops_node.m4 -o dist/tops_node.sh
