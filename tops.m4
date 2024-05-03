@@ -228,6 +228,7 @@ docker run \
   -v ${_arg_workspace_path}:/workspace \
   -v ${HOME}/.aws/credentials:/home/tops/.aws/credentials:ro \
   -v ${HOME}/.aws/config:/home/tops/.aws/config:ro \
+  -v ${HOME}/.config/helm:/home/tops/.config/helm \
   -v ${HOME}/.config/gcloud:/home/tops/.config/gcloud:ro \
   -v ${HOME}/.kube:/home/tops/.kube:ro \
   -v ${HOME}/.terraformrc:/home/tops/.terraformrc:ro \
