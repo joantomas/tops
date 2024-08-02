@@ -98,8 +98,8 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
 
   RUN apt-get install -y golang-${GOLANG_VERSION}-go
 
-  ENV GOPATH /go
-  ENV PATH $GOPATH/bin:/usr/lib/go-${GOLANG_VERSION}/bin:$PATH
+  ENV GOPATH=/go
+  ENV PATH=$GOPATH/bin:/usr/lib/go-${GOLANG_VERSION}/bin:$PATH
 
   RUN curl -Ls https://github.com/mozilla/sops/releases/download/v${SOPS_VERSION}/sops_${SOPS_VERSION}_amd64.deb -o /tmp/sops.deb && \
       dpkg -i /tmp/sops.deb && \
