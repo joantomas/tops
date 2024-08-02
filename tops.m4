@@ -37,6 +37,28 @@ esac
 test -f $_arg_env_file || touch $_arg_env_file && \
 test -f $HISTORY_FILE || touch $HISTORY_FILE && \
 { docker build -t tops --build-arg USER_ID=${USER_ID} -f - . <<-\EOF
+  FROM ubuntu:22.04 AS builder
+  ARG LASTPASS_VERSION=1.5.0
+  RUN apt-get update && \
+      apt-get -y install \
+              curl \
+              bash-completion \
+              build-essential \
+              cmake \
+              libcurl4  \
+              libcurl4-openssl-dev  \
+              libssl-dev  \
+              libssl3 \
+              libxml2 \
+              libxml2-dev  \
+              pkg-config \
+              ca-certificates \
+              xclip
+  RUN mkdir /tmp/lastpass-cli && \
+      curl -L https://github.com/lastpass/lastpass-cli/releases/download/v${LASTPASS_VERSION}/lastpass-cli-${LASTPASS_VERSION}.tar.gz | \
+      tar -zx -C /tmp/lastpass-cli --strip-components=1
+  RUN cd /tmp/lastpass-cli && export CFLAGS="-fcommon" && make
+
   FROM ubuntu:22.04
 
   ARG ANSIBLE_VERSION=5.10.0
@@ -57,6 +79,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   ARG TERRAFORM_PROVIDER_KUBECTL_VERSION=1.3.1
   ARG TERRAFORM_PROVIDER_SOPS_VERSION=0.5.0
   ARG TERRAFORM_VERSION=0.14.6
+  ARG GCLOUD_VERSION=473.0.0-0
   ARG USER_ID
 
   RUN useradd -u ${USER_ID} -s /bin/bash -d /home/tops -m tops
@@ -69,7 +92,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   RUN apt-get update && \
       apt-get install -y curl wget git gcc software-properties-common bash-completion \
                          unzip jq vim groff python3-pip dnsutils iputils-ping \
-                         rsync lastpass-cli python3-dnspython python3-passlib \
+                         rsync python3-dnspython python3-passlib \
                          python3-jsonpatch python3-netaddr && \
       echo 'source /usr/share/bash-completion/bash_completion' >> /home/tops/.bashrc
 
@@ -167,6 +190,22 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
 
   RUN rm -rf /usr/local/lib/python3.10/dist-packages/ansible_collections/community/general
 
+  RUN curl -Ls "https://github.com/Shopify/kubeaudit/releases/download/v0.22.1/kubeaudit_0.22.1_linux_amd64.tar.gz" -o /tmp/kubeaudit_0.22.1_linux_amd64.tar.gz && \
+      cd /tmp && \
+      tar zxvf kubeaudit_0.22.1_linux_amd64.tar.gz && \
+      mv kubeaudit /usr/local/bin/kubeaudit
+
+  RUN curl -L https://github.com/argoproj/argo-workflows/releases/download/v3.5.4/argo-linux-amd64.gz -o /tmp/argo-linux-amd64.gz && \
+      cd /tmp && \
+      gzip -d argo-linux-amd64.gz && \
+      chmod +x /tmp/argo-linux-amd64 && \
+      mv /tmp/argo-linux-amd64 /usr/local/bin/argo
+
+  RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && \
+      curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg && \
+      apt-get update -y && \
+      apt-get install -y google-cloud-cli=${GCLOUD_VERSION}
+
   RUN chown -R tops:tops /home/tops
 
   USER tops
@@ -178,19 +217,24 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   RUN steampipe plugin install steampipe && \
       steampipe plugin install aws
 
+  COPY --from=builder /tmp/lastpass-cli/build/lpass /usr/bin/
   WORKDIR /workspace
 
 EOF
 } && \
+echo "ContainerName ${CONTAINER_NAME}" && \
 docker run \
   --rm \
   -v ${_arg_workspace_path}:/workspace \
   -v ${HOME}/.aws/credentials:/home/tops/.aws/credentials:ro \
   -v ${HOME}/.aws/config:/home/tops/.aws/config:ro \
+  -v ${HOME}/.config/helm:/home/tops/.config/helm \
+  -v ${HOME}/.config/gcloud:/home/tops/.config/gcloud:ro \
   -v ${HOME}/.kube:/home/tops/.kube:ro \
   -v ${HOME}/.terraformrc:/home/tops/.terraformrc:ro \
   -v ${HOME}/.terraform.d/plugin-cache:/home/tops/.terraform.d/plugin-cache \
   -v ${HOME}/.vault_password_file:/home/tops/.vault_password_file \
+  -v ${HOME}/.terraformStatesBucketGCS.json:/home/tops/.terraformStatesBucketGCS.json:ro \
   -v ${HISTORY_FILE}:/home/tops/.bash_history:rw \
   -v ${SSH_AUTH_SOCK}:${MY_SSH_AUTH_SOCK}:rw \
   --env SSH_AUTH_SOCK=${MY_SSH_AUTH_SOCK} \
@@ -198,6 +242,7 @@ docker run \
   --name ${CONTAINER_NAME} \
   --env-file $_arg_env_file \
   -ti \
+  -p 9090-9095 \
   tops
 # ^^^  TERMINATE YOUR CODE BEFORE THE BOTTOM ARGBASH MARKER  ^^^
 
