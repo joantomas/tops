@@ -141,7 +141,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       mv aws-iam-authenticator /usr/local/bin/
 
   RUN curl -Ls https://github.com/dandavison/delta/releases/download/${DELTA_VERSION}/delta-${DELTA_VERSION}-x86_64-unknown-linux-gnu.tar.gz | \
-           tar --strip-components 1 -C /usr/local/bin -zxvf - delta${DELTA_VERSION}-x86_64-unknown-linux-gnu/delta
+           tar --strip-components 1 -C /usr/local/bin -zxvf - delta-${DELTA_VERSION}-x86_64-unknown-linux-gnu/delta
 
   RUN curl -Ls https://github.com/gavinbunney/terraform-provider-kubectl/releases/download/v${TERRAFORM_PROVIDER_KUBECTL_VERSION}/terraform-provider-kubectl-linux-amd64 \
            -o /home/tops/.terraform.d/plugins/terraform-provider-kubectl_v${TERRAFORM_PROVIDER_KUBECTL_VERSION} && \
