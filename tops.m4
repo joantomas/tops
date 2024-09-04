@@ -64,6 +64,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   ARG ANSIBLE_VERSION=5.10.0
   ARG ANSIBLE_COMMUNITY_GENERAL_COLLECTION_VERSION=6.1.0
   ARG CALICOCTL_VERSION=v3.25.1
+  ARG DELTA_VERSION=0.18.1
   ARG DRIFTCTL_VERSION=0.9.0
   ARG GOLANG_VERSION=1.18
   ARG HELM_VERSION=3.5.4
@@ -138,6 +139,9 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   RUN curl -o aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/amd64/aws-iam-authenticator && \
       chmod +x aws-iam-authenticator && \
       mv aws-iam-authenticator /usr/local/bin/
+
+  RUN curl -Ls https://github.com/dandavison/delta/releases/download/${DELTA_VERSION}/delta-${DELTA_VERSION}-x86_64-unknown-linux-gnu.tar.gz | \
+           tar --strip-components 1 -C /usr/local/bin -zxvf - delta-0.18.1-x86_64-unknown-linux-gnu/delta
 
   RUN curl -Ls https://github.com/gavinbunney/terraform-provider-kubectl/releases/download/v${TERRAFORM_PROVIDER_KUBECTL_VERSION}/terraform-provider-kubectl-linux-amd64 \
            -o /home/tops/.terraform.d/plugins/terraform-provider-kubectl_v${TERRAFORM_PROVIDER_KUBECTL_VERSION} && \
