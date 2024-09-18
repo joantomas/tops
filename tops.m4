@@ -16,6 +16,7 @@ exit 11  #)Created by argbash-init v2.10.0
 printf 'Value of --%s: %s\n' 'Environment file' "$_arg_env_file"
 printf "Value of '%s': %s\n" 'Workspace path' "$_arg_workspace_path"
 
+ANSIBLE_CFG="${HOME}/.ansible.cfg"
 HISTORY_FILE="${HOME}/.bash_history"
 KNOWN_HOSTS_FILE="${HOME}/.ssh/known_hosts"
 CONTAINER_UUID=$(cat /dev/urandom | LC_ALL=C tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)
@@ -36,14 +37,38 @@ case "$(uname -s)" in
 esac
 
 test -f $_arg_env_file || touch $_arg_env_file && \
+test -f $ANSIBLE_CFG || touch $ANSIBLE_CFG && \
 test -f $HISTORY_FILE || touch $HISTORY_FILE && \
 test -f $KNOWN_HOSTS_FILE || touch $KNOWN_HOSTS_FILE && \
 { docker build -t tops --build-arg USER_ID=${USER_ID} -f - . <<-\EOF
+  FROM ubuntu:22.04 AS builder
+  ARG LASTPASS_VERSION=1.5.0
+  RUN apt-get update && \
+      apt-get -y install \
+              curl \
+              bash-completion \
+              build-essential \
+              cmake \
+              libcurl4  \
+              libcurl4-openssl-dev  \
+              libssl-dev  \
+              libssl3 \
+              libxml2 \
+              libxml2-dev  \
+              pkg-config \
+              ca-certificates \
+              xclip
+  RUN mkdir /tmp/lastpass-cli && \
+      curl -L https://github.com/lastpass/lastpass-cli/releases/download/v${LASTPASS_VERSION}/lastpass-cli-${LASTPASS_VERSION}.tar.gz | \
+      tar -zx -C /tmp/lastpass-cli --strip-components=1
+  RUN cd /tmp/lastpass-cli && export CFLAGS="-fcommon" && make
+
   FROM ubuntu:22.04
 
   ARG ANSIBLE_VERSION=5.10.0
   ARG ANSIBLE_COMMUNITY_GENERAL_COLLECTION_VERSION=6.1.0
   ARG CALICOCTL_VERSION=v3.25.1
+  ARG DELTA_VERSION=0.18.1
   ARG DRIFTCTL_VERSION=0.9.0
   ARG GOLANG_VERSION=1.18
   ARG HELM_VERSION=3.5.4
@@ -59,6 +84,7 @@ test -f $KNOWN_HOSTS_FILE || touch $KNOWN_HOSTS_FILE && \
   ARG TERRAFORM_PROVIDER_KUBECTL_VERSION=1.3.1
   ARG TERRAFORM_PROVIDER_SOPS_VERSION=0.5.0
   ARG TERRAFORM_VERSION=0.14.6
+  ARG GCLOUD_VERSION=473.0.0-0
   ARG USER_ID
 
   RUN useradd -u ${USER_ID} -s /bin/bash -d /home/tops -m tops
@@ -71,14 +97,14 @@ test -f $KNOWN_HOSTS_FILE || touch $KNOWN_HOSTS_FILE && \
   RUN apt-get update && \
       apt-get install -y curl wget git gcc software-properties-common bash-completion \
                          unzip jq vim groff python3-pip dnsutils iputils-ping \
-                         rsync lastpass-cli python3-dnspython python3-passlib \
+                         rsync python3-dnspython python3-passlib \
                          python3-jsonpatch python3-netaddr && \
       echo 'source /usr/share/bash-completion/bash_completion' >> /home/tops/.bashrc
 
   RUN apt-get install -y golang-${GOLANG_VERSION}-go
 
-  ENV GOPATH /go
-  ENV PATH $GOPATH/bin:/usr/lib/go-${GOLANG_VERSION}/bin:$PATH
+  ENV GOPATH=/go
+  ENV PATH=$GOPATH/bin:/usr/lib/go-${GOLANG_VERSION}/bin:$PATH
 
   RUN curl -Ls https://github.com/mozilla/sops/releases/download/v${SOPS_VERSION}/sops_${SOPS_VERSION}_amd64.deb -o /tmp/sops.deb && \
       dpkg -i /tmp/sops.deb && \
@@ -117,6 +143,9 @@ test -f $KNOWN_HOSTS_FILE || touch $KNOWN_HOSTS_FILE && \
   RUN curl -o aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/amd64/aws-iam-authenticator && \
       chmod +x aws-iam-authenticator && \
       mv aws-iam-authenticator /usr/local/bin/
+
+  RUN curl -Ls https://github.com/dandavison/delta/releases/download/${DELTA_VERSION}/delta-${DELTA_VERSION}-x86_64-unknown-linux-gnu.tar.gz | \
+           tar --strip-components 1 -C /usr/local/bin -zxvf - delta-${DELTA_VERSION}-x86_64-unknown-linux-gnu/delta
 
   RUN curl -Ls https://github.com/gavinbunney/terraform-provider-kubectl/releases/download/v${TERRAFORM_PROVIDER_KUBECTL_VERSION}/terraform-provider-kubectl-linux-amd64 \
            -o /home/tops/.terraform.d/plugins/terraform-provider-kubectl_v${TERRAFORM_PROVIDER_KUBECTL_VERSION} && \
@@ -169,9 +198,37 @@ test -f $KNOWN_HOSTS_FILE || touch $KNOWN_HOSTS_FILE && \
 
   RUN rm -rf /usr/local/lib/python3.10/dist-packages/ansible_collections/community/general
 
+  RUN curl -Ls "https://github.com/Shopify/kubeaudit/releases/download/v0.22.1/kubeaudit_0.22.1_linux_amd64.tar.gz" -o /tmp/kubeaudit_0.22.1_linux_amd64.tar.gz && \
+      cd /tmp && \
+      tar zxvf kubeaudit_0.22.1_linux_amd64.tar.gz && \
+      mv kubeaudit /usr/local/bin/kubeaudit
+
+  RUN curl -L https://github.com/argoproj/argo-workflows/releases/download/v3.5.4/argo-linux-amd64.gz -o /tmp/argo-linux-amd64.gz && \
+      cd /tmp && \
+      gzip -d argo-linux-amd64.gz && \
+      chmod +x /tmp/argo-linux-amd64 && \
+      mv /tmp/argo-linux-amd64 /usr/local/bin/argo
+
+  RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && \
+      curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg && \
+      apt-get update -y && \
+      apt-get install -y google-cloud-cli=${GCLOUD_VERSION}
+
   RUN chown -R tops:tops /home/tops
 
   USER tops
+
+  RUN set -x; cd "$(mktemp -d)" && \
+        OS="$(uname | tr '[:upper:]' '[:lower:]')" && \
+        ARCH="$(uname -m | sed -e 's/x86_64/amd64/' -e 's/\(arm\)\(64\)\?.*/\1\2/' -e 's/aarch64$/arm64/')" && \
+        KREW="krew-${OS}_${ARCH}" && \
+        curl -fsSLO "https://github.com/kubernetes-sigs/krew/releases/latest/download/${KREW}.tar.gz" && \
+        tar zxvf "${KREW}.tar.gz" && \
+        ./"${KREW}" install krew && \
+        echo "export PATH=${KREW_ROOT:-$HOME/.krew}/bin:$PATH" >> /home/tops/.bashrc && \
+        export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH" && \
+        kubectl krew update && \
+        kubectl krew install rook-ceph
 
   RUN ansible-galaxy collection install community.general:==${ANSIBLE_COMMUNITY_GENERAL_COLLECTION_VERSION}
 
@@ -180,19 +237,25 @@ test -f $KNOWN_HOSTS_FILE || touch $KNOWN_HOSTS_FILE && \
   RUN steampipe plugin install steampipe && \
       steampipe plugin install aws
 
+  COPY --from=builder /tmp/lastpass-cli/build/lpass /usr/bin/
   WORKDIR /workspace
 
 EOF
 } && \
+echo "ContainerName ${CONTAINER_NAME}" && \
 docker run \
   --rm \
   -v ${_arg_workspace_path}:/workspace \
   -v ${HOME}/.aws/credentials:/home/tops/.aws/credentials:ro \
   -v ${HOME}/.aws/config:/home/tops/.aws/config:ro \
+  -v ${HOME}/.config/helm:/home/tops/.config/helm \
+  -v ${HOME}/.config/gcloud:/home/tops/.config/gcloud:ro \
   -v ${HOME}/.kube:/home/tops/.kube:ro \
   -v ${HOME}/.terraformrc:/home/tops/.terraformrc:ro \
   -v ${HOME}/.terraform.d/plugin-cache:/home/tops/.terraform.d/plugin-cache \
   -v ${HOME}/.vault_password_file:/home/tops/.vault_password_file \
+  -v ${HOME}/.terraformStatesBucketGCS.json:/home/tops/.terraformStatesBucketGCS.json:ro \
+  -v ${ANSIBLE_CFG}:/home/tops/.ansible.cfg \
   -v ${HISTORY_FILE}:/home/tops/.bash_history:rw \
   -v ${KNOWN_HOSTS_FILE}:/home/tops/.ssh/known_hosts:rw \
   -v ${SSH_AUTH_SOCK}:${MY_SSH_AUTH_SOCK}:rw \
@@ -201,6 +264,7 @@ docker run \
   --name ${CONTAINER_NAME} \
   --env-file $_arg_env_file \
   -ti \
+  -p 9090-9095 \
   tops
 # ^^^  TERMINATE YOUR CODE BEFORE THE BOTTOM ARGBASH MARKER  ^^^
 
