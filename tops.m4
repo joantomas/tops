@@ -35,6 +35,7 @@ case "$(uname -s)" in
         ;;
 esac
 
+mkdir -p /tmp/tops
 test -f $_arg_env_file || touch $_arg_env_file && \
 test -f $ANSIBLE_CFG || touch $ANSIBLE_CFG && \
 test -f $HISTORY_FILE || touch $HISTORY_FILE && \
@@ -63,8 +64,8 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
 
   FROM ubuntu:22.04
 
-  ARG ANSIBLE_VERSION=5.10.0
-  ARG ANSIBLE_COMMUNITY_GENERAL_COLLECTION_VERSION=6.1.0
+  ARG ANSIBLE_VERSION=10.2.0
+  ARG ANSIBLE_COMMUNITY_GENERAL_COLLECTION_VERSION=9.2.0
   ARG CALICOCTL_VERSION=v3.25.1
   ARG DELTA_VERSION=0.18.1
   ARG DRIFTCTL_VERSION=0.9.0
@@ -83,20 +84,42 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   ARG TERRAFORM_PROVIDER_SOPS_VERSION=0.5.0
   ARG TERRAFORM_VERSION=0.14.6
   ARG GCLOUD_VERSION=473.0.0-0
+  ARG VIRTUALBOX_VERSION=7.0
   ARG USER_ID
 
   RUN useradd -u ${USER_ID} -s /bin/bash -d /home/tops -m tops
 
   RUN apt-get update && \
-      apt-get install -y locales tzdata && \
+      apt-get install -y curl gpg locales lsb-release tzdata wget && \
       locale-gen ${LOCALE_SETUP} && \
       echo "export LC_ALL=${LOCALE_SETUP}" >> /home/tops/.bashrc
 
+  RUN wget -O - https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg && \
+      echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/hashicorp.list
+
+  RUN wget -O - https://www.virtualbox.org/download/oracle_vbox_2016.asc | gpg --yes --output /usr/share/keyrings/oracle-virtualbox-2016.gpg --dearmor && \
+      echo "deb [arch=amd64 signed-by=/usr/share/keyrings/oracle-virtualbox-2016.gpg] https://download.virtualbox.org/virtualbox/debian $(lsb_release -cs) contrib" | tee /etc/apt/sources.list.d/oracle.list
+
   RUN apt-get update && \
-      apt-get install -y curl wget git gcc software-properties-common bash-completion \
-                         unzip jq vim groff python3-pip dnsutils iputils-ping \
-                         rsync python3-dnspython python3-passlib \
-                         python3-jsonpatch python3-netaddr && \
+      apt-get install -y \
+        bash-completion \
+        gcc \
+        git \
+        groff \
+        iputils-ping \
+        jq \
+        python3-dnspython \
+        python3-jsonpatch \
+        python3-netaddr \
+        python3-passlib \
+        python3-pip dnsutils \
+        rsync \
+        software-properties-common \
+        unzip \
+        vagrant \
+        vim \
+        virtualbox-7.0 \
+      && \
       echo 'source /usr/share/bash-completion/bash_completion' >> /home/tops/.bashrc
 
   RUN apt-get install -y golang-${GOLANG_VERSION}-go
@@ -162,11 +185,14 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
            chmod a+x /usr/local/bin/rke
 
   RUN pip3 install \
-              ansible==${ANSIBLE_VERSION} \
+              "molecule[lint]" \
               ansible-lint \
+              ansible==${ANSIBLE_VERSION} \
               boto3 \
               kubernetes==${KUBERNETES_PYTHON_VERSION} \
+              molecule-vagrant \
               openshift==${OPENSHIFT_VERSION} \
+              testinfra \
               yq
 
   RUN curl -L https://github.com/cloudskiff/driftctl/releases/download/v${DRIFTCTL_VERSION}/driftctl_linux_amd64 -o /usr/local/bin/driftctl && \
@@ -213,6 +239,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       apt-get install -y google-cloud-cli=${GCLOUD_VERSION}
 
   RUN chown -R tops:tops /home/tops
+  RUN apt-get install systemd
 
   USER tops
 
@@ -243,19 +270,26 @@ EOF
 echo "ContainerName ${CONTAINER_NAME}" && \
 docker run \
   --rm \
+  --privileged \
   -v ${_arg_workspace_path}:/workspace \
   -v ${HOME}/.aws/credentials:/home/tops/.aws/credentials:ro \
   -v ${HOME}/.aws/config:/home/tops/.aws/config:ro \
   -v ${HOME}/.config/helm:/home/tops/.config/helm \
+  -v ${HOME}/.config/VirtualBox:/home/tops/.config/VirtualBox \
   -v ${HOME}/.config/gcloud:/home/tops/.config/gcloud:ro \
   -v ${HOME}/.kube:/home/tops/.kube:ro \
   -v ${HOME}/.terraformrc:/home/tops/.terraformrc:ro \
   -v ${HOME}/.terraform.d/plugin-cache:/home/tops/.terraform.d/plugin-cache \
   -v ${HOME}/.vault_password_file:/home/tops/.vault_password_file \
+  -v ${HOME}/.vagrant.d:/home/tops/.vagrant.d \
+  -v ${HOME}/VirtualBox\ VMs:/home/tops/VirtualBox\ VMs \
   -v ${HOME}/.terraformStatesBucketGCS.json:/home/tops/.terraformStatesBucketGCS.json:ro \
   -v ${ANSIBLE_CFG}:/home/tops/.ansible.cfg \
   -v ${HISTORY_FILE}:/home/tops/.bash_history:rw \
   -v ${SSH_AUTH_SOCK}:${MY_SSH_AUTH_SOCK}:rw \
+  -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
+  -v /tmp/tops:/tmp/tops \
+  --device /dev/vboxdrv:/dev/vboxdrv \
   --env SSH_AUTH_SOCK=${MY_SSH_AUTH_SOCK} \
   --env PROMPT_COMMAND='history -a' \
   --name ${CONTAINER_NAME} \
