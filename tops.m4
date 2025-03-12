@@ -253,7 +253,8 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
         echo "export PATH=${KREW_ROOT:-$HOME/.krew}/bin:$PATH" >> /home/tops/.bashrc && \
         export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH" && \
         kubectl krew update && \
-        kubectl krew install rook-ceph
+        kubectl krew install rook-ceph && \
+        kubectl krew install slice
 
   RUN ansible-galaxy collection install community.general:==${ANSIBLE_COMMUNITY_GENERAL_COLLECTION_VERSION}
 
