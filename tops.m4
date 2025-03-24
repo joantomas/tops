@@ -41,7 +41,7 @@ test -f $ANSIBLE_CFG || touch $ANSIBLE_CFG && \
 test -f $HISTORY_FILE || touch $HISTORY_FILE && \
 { docker build -t tops --build-arg USER_ID=${USER_ID} -f - . <<-\EOF
   FROM ubuntu:22.04 AS builder
-  ARG LASTPASS_VERSION=1.5.0
+  ARG LASTPASS_VERSION=1.6.1
   RUN apt-get update && \
       apt-get -y install \
               curl \
