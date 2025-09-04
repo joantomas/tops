@@ -263,6 +263,8 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   RUN steampipe plugin install steampipe && \
       steampipe plugin install aws
 
+  ENV PATH=/tops/utils:$PATH
+
   COPY --from=builder /tmp/lastpass-cli/build/lpass /usr/bin/
   WORKDIR /workspace
 
@@ -289,6 +291,7 @@ docker run \
   -v ${HISTORY_FILE}:/home/tops/.bash_history:rw \
   -v ${SSH_AUTH_SOCK}:${MY_SSH_AUTH_SOCK}:rw \
   -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
+  -v /tops/utils:/tops/utils \
   -v /tmp/tops:/tmp/tops \
   --device /dev/vboxdrv:/dev/vboxdrv \
   --env SSH_AUTH_SOCK=${MY_SSH_AUTH_SOCK} \
