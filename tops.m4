@@ -283,6 +283,7 @@ docker run \
   -v ${HOME}/.kube:/home/tops/.kube:ro \
   -v ${HOME}/.terraformrc:/home/tops/.terraformrc:ro \
   -v ${HOME}/.terraform.d/plugin-cache:/home/tops/.terraform.d/plugin-cache \
+  -v ${HOME}/.tops/utils:/home/tops/utils \
   -v ${HOME}/.vault_password_file:/home/tops/.vault_password_file \
   -v ${HOME}/.vagrant.d:/home/tops/.vagrant.d \
   -v ${HOME}/VirtualBox\ VMs:/home/tops/VirtualBox\ VMs \
@@ -291,7 +292,6 @@ docker run \
   -v ${HISTORY_FILE}:/home/tops/.bash_history:rw \
   -v ${SSH_AUTH_SOCK}:${MY_SSH_AUTH_SOCK}:rw \
   -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
-  -v /tops/utils:/tops/utils \
   -v /tmp/tops:/tmp/tops \
   --device /dev/vboxdrv:/dev/vboxdrv \
   --env SSH_AUTH_SOCK=${MY_SSH_AUTH_SOCK} \
