@@ -14,8 +14,8 @@ exit 11  #)Created by argbash-init v2.10.0
 
 # vvv  PLACE YOUR CODE HERE  vvv
 # For example:
-printf 'Value of --%s: %s\n' 'Environment file' "$_arg_env_file"
-printf 'Value of --%s: %s\n' 'Utils path' "$_arg_utils_path"
+printf "Value of '%s': %s\n" 'Environment file' "$_arg_env_file"
+printf "Value of '%s': %s\n" 'Utils path' "$_arg_utils_path"
 printf "Value of '%s': %s\n" 'Workspace path' "$_arg_workspace_path"
 
 ANSIBLE_CFG="${HOME}/.ansible.cfg"
