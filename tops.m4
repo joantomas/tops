@@ -35,6 +35,7 @@ case "$(uname -s)" in
         ;;
 esac
 
+mkdir -p ${HOME}/.tops/utils
 mkdir -p /tmp/tops
 test -f $_arg_env_file || touch $_arg_env_file && \
 test -f $ANSIBLE_CFG || touch $ANSIBLE_CFG && \
