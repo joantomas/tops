@@ -264,7 +264,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   RUN steampipe plugin install steampipe && \
       steampipe plugin install aws
 
-  ENV PATH=/tops/utils:$PATH
+  RUN echo "export PATH=/home/tops/utils:$PATH" >> /home/tops/.bashrc
 
   COPY --from=builder /tmp/lastpass-cli/build/lpass /usr/bin/
   WORKDIR /workspace
