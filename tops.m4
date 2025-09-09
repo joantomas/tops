@@ -4,6 +4,7 @@
 echo "This is just a script template, not the script (yet) - pass it to 'argbash' to fix this." >&2
 exit 11  #)Created by argbash-init v2.10.0
 # ARG_OPTIONAL_SINGLE([env-file], e, [Environment file], "${HOME}/.env")
+# ARG_OPTIONAL_SINGLE([utils-path], u, [Utils path], "${HOME}/.tops/utils")
 # ARG_POSITIONAL_SINGLE([workspace-path],[Workspace path],"${PWD}")
 # ARG_DEFAULTS_POS
 # ARG_HELP([<The general help message of my script>])
@@ -13,7 +14,8 @@ exit 11  #)Created by argbash-init v2.10.0
 
 # vvv  PLACE YOUR CODE HERE  vvv
 # For example:
-printf 'Value of --%s: %s\n' 'Environment file' "$_arg_env_file"
+printf "Value of '%s': %s\n" 'Environment file' "$_arg_env_file"
+printf "Value of '%s': %s\n" 'Utils path' "$_arg_utils_path"
 printf "Value of '%s': %s\n" 'Workspace path' "$_arg_workspace_path"
 
 ANSIBLE_CFG="${HOME}/.ansible.cfg"
@@ -37,6 +39,7 @@ esac
 
 mkdir -p /tmp/tops
 test -f $_arg_env_file || touch $_arg_env_file && \
+test -f $_arg_utils_path || mkdir -p $_arg_utils_path && \
 test -f $ANSIBLE_CFG || touch $ANSIBLE_CFG && \
 test -f $HISTORY_FILE || touch $HISTORY_FILE && \
 { docker build -t tops --build-arg USER_ID=${USER_ID} -f - . <<-\EOF
@@ -260,6 +263,8 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   RUN steampipe plugin install steampipe && \
       steampipe plugin install aws
 
+  RUN echo "export PATH=/home/tops/utils:$PATH" >> /home/tops/.bashrc
+
   COPY --from=builder /tmp/lastpass-cli/build/lpass /usr/bin/
   WORKDIR /workspace
 
@@ -270,6 +275,7 @@ docker run \
   --rm \
   --privileged \
   -v ${_arg_workspace_path}:/workspace \
+  -v ${_arg_utils_path}:/home/tops/utils \
   -v ${HOME}/.aws/credentials:/home/tops/.aws/credentials:ro \
   -v ${HOME}/.aws/config:/home/tops/.aws/config:ro \
   -v ${HOME}/.config/helm:/home/tops/.config/helm \
