@@ -191,6 +191,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
               "molecule[lint]" \
               ansible-lint \
               ansible==${ANSIBLE_VERSION} \
+              distlib \
               boto3 \
               kubernetes==${KUBERNETES_PYTHON_VERSION} \
               molecule-vagrant \
