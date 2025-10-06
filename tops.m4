@@ -20,6 +20,7 @@ printf "Value of '%s': %s\n" 'Workspace path' "$_arg_workspace_path"
 
 ANSIBLE_CFG="${HOME}/.ansible.cfg"
 HISTORY_FILE="${HOME}/.bash_history"
+KNOWN_HOSTS_FILE="${HOME}/.ssh/known_hosts"
 CONTAINER_UUID=$(cat /dev/urandom | LC_ALL=C tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)
 CONTAINER_NAME="tops-${CONTAINER_UUID}"
 USER_ID=$(id -u)
@@ -42,6 +43,7 @@ test -f $_arg_env_file || touch $_arg_env_file && \
 test -f $_arg_utils_path || mkdir -p $_arg_utils_path && \
 test -f $ANSIBLE_CFG || touch $ANSIBLE_CFG && \
 test -f $HISTORY_FILE || touch $HISTORY_FILE && \
+test -f $KNOWN_HOSTS_FILE || touch $KNOWN_HOSTS_FILE && \
 { docker build -t tops --build-arg USER_ID=${USER_ID} -f - . <<-\EOF
   FROM ubuntu:22.04 AS builder
   ARG LASTPASS_VERSION=1.6.1
@@ -294,6 +296,7 @@ docker run \
   -v ${HOME}/.terraformStatesBucketGCS.json:/home/tops/.terraformStatesBucketGCS.json:ro \
   -v ${ANSIBLE_CFG}:/home/tops/.ansible.cfg \
   -v ${HISTORY_FILE}:/home/tops/.bash_history:rw \
+  -v ${KNOWN_HOSTS_FILE}:/home/tops/.ssh/known_hosts:rw \
   -v ${SSH_AUTH_SOCK}:${MY_SSH_AUTH_SOCK}:rw \
   -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
   -v /tmp/tops:/tmp/tops \
