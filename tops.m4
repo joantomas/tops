@@ -302,6 +302,7 @@ docker run \
   --env PROMPT_COMMAND='history -a' \
   --name ${CONTAINER_NAME} \
   --env-file $_arg_env_file \
+  --network host \
   -ti \
   -p 9090-9095 \
   tops
