@@ -43,7 +43,7 @@ test -f $_arg_utils_path || mkdir -p $_arg_utils_path && \
 test -f $ANSIBLE_CFG || touch $ANSIBLE_CFG && \
 test -f $HISTORY_FILE || touch $HISTORY_FILE && \
 { docker build -t tops --build-arg USER_ID=${USER_ID} -f - . <<-\EOF
-  FROM ubuntu:22.04 AS builder
+  FROM --platform=linux/amd64 amd64/ubuntu:22.04 AS builder
   ARG LASTPASS_VERSION=1.6.1
   RUN apt-get update && \
       apt-get -y install \
@@ -302,6 +302,7 @@ docker run \
   --env PROMPT_COMMAND='history -a' \
   --name ${CONTAINER_NAME} \
   --env-file $_arg_env_file \
+  --platform="linux/amd64" \
   -ti \
   -p 9090-9095 \
   tops
