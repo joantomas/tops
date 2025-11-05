@@ -206,7 +206,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       rm -rf /tmp/steampipe*
 
   RUN curl -L https://github.com/istio/istio/releases/download/${ISTIO_VERSION}/istio-${ISTIO_VERSION}-linux-amd64.tar.gz | tar -zx -C /usr/local/src && \
-      echo "export PATH=$PATH:/usr/local/src/istio-${ISTIO_VERSION}/bin" >> /home/tops/.bashrc && \
+      echo "export PATH=\$PATH:/usr/local/src/istio-${ISTIO_VERSION}/bin" >> /home/tops/.bashrc && \
       chmod a+rx /usr/local/src/istio-${ISTIO_VERSION} && chmod a+rx /usr/local/src/istio-${ISTIO_VERSION}/bin && \
       chmod a+rx /usr/local/src/istio-${ISTIO_VERSION}/bin/istioctl && \
       ln -s /usr/local/src/istio-${ISTIO_VERSION}/bin/istioctl /usr/local/bin/istioctl
@@ -250,7 +250,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
         curl -fsSLO "https://github.com/kubernetes-sigs/krew/releases/latest/download/${KREW}.tar.gz" && \
         tar zxvf "${KREW}.tar.gz" && \
         ./"${KREW}" install krew && \
-        echo "export PATH=${KREW_ROOT:-$HOME/.krew}/bin:$PATH" >> /home/tops/.bashrc && \
+        echo "export PATH=\${KREW_ROOT:-\$HOME/.krew}/bin:\$PATH" >> /home/tops/.bashrc && \
         export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH" && \
         kubectl krew update && \
         kubectl krew install rook-ceph && \
@@ -263,7 +263,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   RUN steampipe plugin install steampipe && \
       steampipe plugin install aws
 
-  RUN echo "export PATH=/home/tops/utils:$PATH" >> /home/tops/.bashrc
+  RUN echo "export PATH=/home/tops/utils:\$PATH" >> /home/tops/.bashrc
 
   COPY --from=builder /tmp/lastpass-cli/build/lpass /usr/bin/
   WORKDIR /workspace
