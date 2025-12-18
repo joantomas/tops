@@ -65,7 +65,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       tar -zx -C /tmp/lastpass-cli --strip-components=1
   RUN cd /tmp/lastpass-cli && export CFLAGS="-fcommon" && make
 
-  FROM ubuntu:22.04
+  FROM amd64/ubuntu:22.04
 
   ARG ANSIBLE_VERSION=9.8.0
   ARG ANSIBLE_COMMUNITY_GENERAL_COLLECTION_VERSION=11.2.0
