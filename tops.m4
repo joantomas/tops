@@ -67,25 +67,23 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
 
   FROM ubuntu:22.04
 
-  ARG ANSIBLE_VERSION=10.2.0
-  ARG ANSIBLE_COMMUNITY_GENERAL_COLLECTION_VERSION=9.2.0
-  ARG CALICOCTL_VERSION=v3.25.1
-  ARG DEBIAN_FRONTEND=noninteractive
+  ARG ANSIBLE_VERSION=9.8.0
+  ARG ANSIBLE_COMMUNITY_GENERAL_COLLECTION_VERSION=11.2.0
+  ARG CALICOCTL_VERSION=v3.29.5
   ARG DELTA_VERSION=0.18.1
-  ARG DRIFTCTL_VERSION=0.9.0
+  ARG DRIFTCTL_VERSION=0.40.0
   ARG GOLANG_VERSION=1.18
   ARG HELM_VERSION=3.5.4
-  ARG ISTIO_VERSION=1.17.1
-  ARG KUBECTL_VERSION=1.26.3
-  ARG K9S_VERSION=0.19.5
-  ARG KUBERNETES_PYTHON_VERSION=12.0.1
-  ARG KUSTOMIZE_VERSION=v3.10.0
+  ARG ISTIO_VERSION=1.27.1
+  ARG KUBECTL_VERSION=1.32.8
+  ARG K9S_VERSION=0.50.9
+  ARG KUBERNETES_PYTHON_VERSION=33.1.0
+  ARG KUSTOMIZE_VERSION=v5.5.0
   ARG LOCALE_SETUP=en_US.UTF-8
-  ARG OPENSHIFT_VERSION=0.13.1 #https://github.com/kubernetes-client/python/issues/1333
-  ARG RKE_VERSION=1.2.11
-  ARG SOPS_VERSION=3.5.0
-  ARG TERRAFORM_PROVIDER_KUBECTL_VERSION=1.3.1
-  ARG TERRAFORM_PROVIDER_SOPS_VERSION=0.5.0
+  ARG OPENSHIFT_VERSION=0.13.1 #https://github.com/kubernetes-client/python/issues/
+  ARG SOPS_VERSION=3.10.2
+  ARG TERRAFORM_PROVIDER_KUBECTL_VERSION=1.19
+  ARG TERRAFORM_PROVIDER_SOPS_VERSION=1.2.1
   ARG TERRAFORM_VERSION=0.14.6
   ARG GCLOUD_VERSION=473.0.0-0
   ARG VIRTUALBOX_VERSION=7.0
@@ -116,7 +114,9 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
         python3-jsonpatch \
         python3-netaddr \
         python3-passlib \
-        python3-pip dnsutils \
+        python3-pip \
+        python3-distlib \
+        dnsutils \
         rsync \
         software-properties-common \
         unzip \
@@ -145,7 +145,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       mv /usr/local/bin/helm-sops /usr/local/bin/helm && \
       chmod a+x /usr/local/bin/helm
 
-  RUN curl -Ls https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl && \
+  RUN curl -Ls https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl && \
       chmod +x /usr/local/bin/kubectl && \
       echo 'source <(kubectl completion bash)' >> /home/tops/.bashrc && \
       echo 'alias k=kubectl' >> /home/tops/.bashrc && \
@@ -176,17 +176,13 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
            -o /home/tops/.terraform.d/plugins/terraform-provider-kubectl_v${TERRAFORM_PROVIDER_KUBECTL_VERSION} && \
       chmod +x /home/tops/.terraform.d/plugins/terraform-provider-kubectl_v${TERRAFORM_PROVIDER_KUBECTL_VERSION}
 
-  RUN curl -Ls https://github.com/carlpett/terraform-provider-sops/releases/download/v${TERRAFORM_PROVIDER_SOPS_VERSION}/terraform-provider-sops_v${TERRAFORM_PROVIDER_SOPS_VERSION}_linux_amd64.zip \
+  RUN curl -Ls https://github.com/carlpett/terraform-provider-sops/releases/download/v${TERRAFORM_PROVIDER_SOPS_VERSION}/terraform-provider-sops_${TERRAFORM_PROVIDER_SOPS_VERSION}_linux_amd64.zip \
            -o /tmp/terraform-provider-sops.zip && \
       unzip -j /tmp/terraform-provider-sops.zip -d /home/tops/.terraform.d/plugins/ && \
       chmod +x /home/tops/.terraform.d/plugins/terraform-provider-sops_v${TERRAFORM_PROVIDER_SOPS_VERSION}
 
-  RUN curl -Ls https://github.com/derailed/k9s/releases/download/v${K9S_VERSION}/k9s_Linux_x86_64.tar.gz | tar -zx k9s && \
+  RUN curl -Ls https://github.com/derailed/k9s/releases/download/v${K9S_VERSION}/k9s_Linux_amd64.tar.gz  | tar -zx k9s && \
       mv k9s /usr/local/bin/
-
-  RUN curl -Ls https://github.com/rancher/rke/releases/download/v${RKE_VERSION}/rke_linux-amd64 \
-           -o /usr/local/bin/rke && \
-           chmod a+x /usr/local/bin/rke
 
   RUN pip3 install \
               "molecule[lint]" \
@@ -200,7 +196,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
               testinfra \
               yq
 
-  RUN curl -L https://github.com/cloudskiff/driftctl/releases/download/v${DRIFTCTL_VERSION}/driftctl_linux_amd64 -o /usr/local/bin/driftctl && \
+  RUN curl -L https://github.com/snyk/driftctl/releases/download/v${DRIFTCTL_VERSION}/driftctl_linux_amd64 -o /usr/local/bin/driftctl && \
       chmod a+x /usr/local/bin/driftctl
 
   RUN curl -Ls https://github.com/turbot/steampipe/releases/latest/download/steampipe_linux_amd64.tar.gz -o /tmp/steampipe.tar.gz && \
@@ -211,7 +207,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       rm -rf /tmp/steampipe*
 
   RUN curl -L https://github.com/istio/istio/releases/download/${ISTIO_VERSION}/istio-${ISTIO_VERSION}-linux-amd64.tar.gz | tar -zx -C /usr/local/src && \
-      echo "export PATH=$PATH:/usr/local/src/istio-${ISTIO_VERSION}/bin" >> /home/tops/.bashrc && \
+      echo "export PATH=\$PATH:/usr/local/src/istio-${ISTIO_VERSION}/bin" >> /home/tops/.bashrc && \
       chmod a+rx /usr/local/src/istio-${ISTIO_VERSION} && chmod a+rx /usr/local/src/istio-${ISTIO_VERSION}/bin && \
       chmod a+rx /usr/local/src/istio-${ISTIO_VERSION}/bin/istioctl && \
       ln -s /usr/local/src/istio-${ISTIO_VERSION}/bin/istioctl /usr/local/bin/istioctl
@@ -255,7 +251,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
         curl -fsSLO "https://github.com/kubernetes-sigs/krew/releases/latest/download/${KREW}.tar.gz" && \
         tar zxvf "${KREW}.tar.gz" && \
         ./"${KREW}" install krew && \
-        echo "export PATH=${KREW_ROOT:-$HOME/.krew}/bin:$PATH" >> /home/tops/.bashrc && \
+        echo "export PATH=\${KREW_ROOT:-\$HOME/.krew}/bin:\$PATH" >> /home/tops/.bashrc && \
         export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH" && \
         kubectl krew update && \
         kubectl krew install rook-ceph && \
@@ -268,7 +264,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   RUN steampipe plugin install steampipe && \
       steampipe plugin install aws
 
-  RUN echo "export PATH=/home/tops/utils:$PATH" >> /home/tops/.bashrc
+  RUN echo "export PATH=/home/tops/utils:\$PATH" >> /home/tops/.bashrc
 
   COPY --from=builder /tmp/lastpass-cli/build/lpass /usr/bin/
   WORKDIR /workspace
