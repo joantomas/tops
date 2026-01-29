@@ -20,8 +20,9 @@ printf "Value of '%s': %s\n" 'Workspace path' "$_arg_workspace_path"
 
 ANSIBLE_CFG="${HOME}/.ansible.cfg"
 HISTORY_FILE="${HOME}/.bash_history"
+WORKSPACE_HINT=$(basename "${_arg_workspace_path}")
 CONTAINER_UUID=$(cat /dev/urandom | LC_ALL=C tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)
-CONTAINER_NAME="tops-${CONTAINER_UUID}"
+CONTAINER_NAME="tops-${WORKSPACE_HINT}-${CONTAINER_UUID}"
 USER_ID=$(id -u)
 
 case "$(uname -s)" in
@@ -87,6 +88,8 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   ARG TERRAFORM_VERSION=0.14.6
   ARG GCLOUD_VERSION=473.0.0-0
   ARG VIRTUALBOX_VERSION=7.0
+  ARG INFINISPAN_QUARKUS_VERSION=14.0.34.Final
+  ARG NODE_VERSION=22
   ARG USER_ID
 
   RUN useradd -u ${USER_ID} -s /bin/bash -d /home/tops -m tops
@@ -119,6 +122,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
         dnsutils \
         rsync \
         software-properties-common \
+        tmux \
         unzip \
         vagrant \
         vim \
@@ -210,7 +214,8 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       echo "export PATH=\$PATH:/usr/local/src/istio-${ISTIO_VERSION}/bin" >> /home/tops/.bashrc && \
       chmod a+rx /usr/local/src/istio-${ISTIO_VERSION} && chmod a+rx /usr/local/src/istio-${ISTIO_VERSION}/bin && \
       chmod a+rx /usr/local/src/istio-${ISTIO_VERSION}/bin/istioctl && \
-      ln -s /usr/local/src/istio-${ISTIO_VERSION}/bin/istioctl /usr/local/bin/istioctl
+      ln -s /usr/local/src/istio-${ISTIO_VERSION}/bin/istioctl /usr/local/bin/istioctl && \
+      echo 'source <(istioctl completion bash)' >> /home/tops/.bashrc
 
   RUN curl -Ls "https://github.com/projectcalico/calico/releases/download/${CALICOCTL_VERSION}/calicoctl-linux-amd64" -o /usr/local/bin/calicoctl && \
       chmod a+rx /usr/local/bin/calicoctl
@@ -238,6 +243,13 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg && \
       apt-get update -y && \
       apt-get install -y google-cloud-cli=${GCLOUD_VERSION}
+
+  RUN curl -L https://github.com/infinispan/infinispan-quarkus/releases/download/${INFINISPAN_QUARKUS_VERSION}/infinispan-cli-${INFINISPAN_QUARKUS_VERSION}-linux-amd64.zip \
+      -o /tmp/infinispan.zip && \
+      unzip -j /tmp/infinispan.zip infinispan-cli-${INFINISPAN_QUARKUS_VERSION}/infinispan-cli -d /usr/local/bin/ && \
+      mv /usr/local/bin/infinispan-cli /usr/local/bin/kubectl-infinispan && \
+      chmod +x /usr/local/bin/kubectl-infinispan && \
+      rm /tmp/infinispan.zip
 
   RUN chown -R tops:tops /home/tops
   RUN apt-get install systemd
@@ -267,6 +279,10 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   RUN echo "export PATH=/home/tops/utils:\$PATH" >> /home/tops/.bashrc
 
   COPY --from=builder /tmp/lastpass-cli/build/lpass /usr/bin/
+
+  RUN curl -fsSL https://claude.ai/install.sh | bash && \
+      echo "export PATH=\$PATH:\${HOME}/.local/bin" >> /home/tops/.bashrc
+
   WORKDIR /workspace
 
 EOF
@@ -280,6 +296,8 @@ docker run \
   -v ${HOME}/.aws/credentials:/home/tops/.aws/credentials:ro \
   -v ${HOME}/.aws/config:/home/tops/.aws/config:ro \
   -v ${HOME}/.config/helm:/home/tops/.config/helm \
+  -v ${HOME}/.claude:/home/tops/.claude \
+  -v ${HOME}/.claude.json:/home/tops/.claude.json \
   -v ${HOME}/.config/VirtualBox:/home/tops/.config/VirtualBox \
   -v ${HOME}/.config/gcloud:/home/tops/.config/gcloud:ro \
   -v ${HOME}/.kube:/home/tops/.kube:ro \
@@ -297,6 +315,7 @@ docker run \
   --device /dev/vboxdrv:/dev/vboxdrv \
   --env SSH_AUTH_SOCK=${MY_SSH_AUTH_SOCK} \
   --env PROMPT_COMMAND='history -a' \
+  --env CONTAINER_NAME=${CONTAINER_NAME} \
   --name ${CONTAINER_NAME} \
   --env-file $_arg_env_file \
   --platform="linux/amd64" \
