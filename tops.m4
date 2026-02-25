@@ -85,7 +85,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   ARG SOPS_VERSION=3.10.2
   ARG TERRAFORM_PROVIDER_KUBECTL_VERSION=1.19
   ARG TERRAFORM_PROVIDER_SOPS_VERSION=1.2.1
-  ARG TERRAFORM_VERSION=0.14.6
+  ARG TERRAFORM_VERSION=1.13.3
   ARG GCLOUD_VERSION=473.0.0-0
   ARG VIRTUALBOX_VERSION=7.0
   ARG INFINISPAN_QUARKUS_VERSION=14.0.34.Final
@@ -158,7 +158,9 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       echo 'export now="--force --grace-period=0"' >> /home/tops/.bashrc && \
       echo 'complete -F __start_kubectl k' >> /home/tops/.bashrc
 
-  RUN curl -Ls https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip | gunzip > /usr/local/bin/terraform && \
+  RUN curl -Ls -o /tmp/terraform.zip https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip && \
+      unzip /tmp/terraform.zip terraform -d /usr/local/bin/ && \
+      rm -f /tmp/terraform.zip && \
       chmod +x /usr/local/bin/terraform && \
       mkdir -p /home/tops/.terraform.d/plugins && \
       terraform -install-autocomplete
