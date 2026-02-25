@@ -159,7 +159,8 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       echo 'complete -F __start_kubectl k' >> /home/tops/.bashrc
 
   RUN curl -Ls -o /tmp/terraform.zip https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip && \
-      unzip /tmp/terraform.zip -d /usr/local/bin/ && \
+      unzip /tmp/terraform.zip terraform -d /usr/local/bin/ && \
+      rm -f /tmp/terraform.zip && \
       chmod +x /usr/local/bin/terraform && \
       mkdir -p /home/tops/.terraform.d/plugins && \
       terraform -install-autocomplete
