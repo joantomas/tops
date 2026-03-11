@@ -39,6 +39,7 @@ case "$(uname -s)" in
 esac
 
 mkdir -p /tmp/tops
+mkdir -p ${HOME}/.codex
 test -f $_arg_env_file || touch $_arg_env_file && \
 test -f $_arg_utils_path || mkdir -p $_arg_utils_path && \
 test -f $ANSIBLE_CFG || touch $ANSIBLE_CFG && \
@@ -258,6 +259,10 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       apt-get update && \
       apt-get install -y gh
 
+  RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - && \
+      apt-get install -y nodejs && \
+      npm install -g @openai/codex
+
   RUN chown -R tops:tops /home/tops
   RUN apt-get install systemd
 
@@ -305,6 +310,7 @@ docker run \
   -v ${HOME}/.config/helm:/home/tops/.config/helm \
   -v ${HOME}/.claude:/home/tops/.claude \
   -v ${HOME}/.claude.json:/home/tops/.claude.json \
+  -v ${HOME}/.codex:/home/tops/.codex \
   -v ${HOME}/.config/VirtualBox:/home/tops/.config/VirtualBox \
   -v ${HOME}/.config/gcloud:/home/tops/.config/gcloud:ro \
   -v ${HOME}/.kube:/home/tops/.kube:ro \
