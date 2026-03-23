@@ -44,7 +44,11 @@ test -f $_arg_env_file || touch $_arg_env_file && \
 test -f $_arg_utils_path || mkdir -p $_arg_utils_path && \
 test -f $ANSIBLE_CFG || touch $ANSIBLE_CFG && \
 test -f $HISTORY_FILE || touch $HISTORY_FILE && \
-{ docker build --platform=linux/amd64 -t tops --build-arg USER_ID=${USER_ID} -f - . <<-\EOF
+LIBVIRT_GID_BUILD=$(stat -c '%g' /var/run/libvirt/libvirt-sock 2>/dev/null || echo "")
+LIBVIRT_BUILD_ARG=""
+if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=${LIBVIRT_GID_BUILD}"; fi
+
+{ docker build --platform=linux/amd64 -t tops --build-arg USER_ID=${USER_ID} ${LIBVIRT_BUILD_ARG} -f - . <<-\EOF
   FROM amd64/ubuntu:22.04 AS builder
   ARG LASTPASS_VERSION=1.6.1
   RUN apt-get update && \
@@ -90,10 +94,12 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   ARG GCLOUD_VERSION=473.0.0-0
   ARG VIRTUALBOX_VERSION=7.0
   ARG INFINISPAN_QUARKUS_VERSION=14.0.34.Final
+  ARG LIBVIRT_GID=""
   ARG NODE_VERSION=22
   ARG USER_ID
 
-  RUN useradd -u ${USER_ID} -s /bin/bash -d /home/tops -m tops
+  RUN useradd -u ${USER_ID} -s /bin/bash -d /home/tops -m tops && \
+      if [ -n "${LIBVIRT_GID}" ]; then groupadd -g ${LIBVIRT_GID} libvirt 2>/dev/null || true; usermod -aG libvirt tops; fi
 
   RUN apt-get update && \
       apt-get install -y curl gpg locales lsb-release tzdata wget && \
@@ -198,7 +204,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
               distlib \
               boto3 \
               kubernetes==${KUBERNETES_PYTHON_VERSION} \
-              molecule-vagrant \
+              "molecule-plugins[vagrant]" \
               openshift==${OPENSHIFT_VERSION} \
               testinfra \
               yq
@@ -264,7 +270,13 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       npm install -g @openai/codex
 
   RUN chown -R tops:tops /home/tops
-  RUN apt-get install systemd
+  RUN apt-get install -y systemd libvirt-dev libvirt-clients
+
+  # molecule-plugins vagrant module discovery: symlink modules/ into playbooks/library/
+  RUN python3 -c "import os, molecule_plugins.vagrant as mv; \
+      src=os.path.join(os.path.dirname(mv.__file__), 'modules'); \
+      dst=os.path.join(os.path.dirname(mv.__file__), 'playbooks', 'library'); \
+      os.symlink(src, dst)" 2>/dev/null || true
 
   USER tops
 
@@ -299,6 +311,11 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
 
 EOF
 } && \
+LIBVIRT_DOCKER_ARGS="" && \
+if [ -S "/var/run/libvirt/libvirt-sock" ] && [ -c "/dev/kvm" ]; then
+  LIBVIRT_GID=$(stat -c '%g' /var/run/libvirt/libvirt-sock)
+  LIBVIRT_DOCKER_ARGS="-v /var/run/libvirt/libvirt-sock:/var/run/libvirt/libvirt-sock --device /dev/kvm:/dev/kvm --group-add ${LIBVIRT_GID} -e LIBVIRT_DEFAULT_URI=qemu:///system"
+fi && \
 echo "ContainerName ${CONTAINER_NAME}" && \
 docker run \
   --rm \
@@ -325,6 +342,7 @@ docker run \
   -v ${SSH_AUTH_SOCK}:${MY_SSH_AUTH_SOCK}:rw \
   -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
   -v /tmp/tops:/tmp/tops \
+  ${LIBVIRT_DOCKER_ARGS} \
   --device /dev/vboxdrv:/dev/vboxdrv \
   --env SSH_AUTH_SOCK=${MY_SSH_AUTH_SOCK} \
   --env PROMPT_COMMAND='history -a' \
