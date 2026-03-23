@@ -44,7 +44,12 @@ test -f $_arg_env_file || touch $_arg_env_file && \
 test -f $_arg_utils_path || mkdir -p $_arg_utils_path && \
 test -f $ANSIBLE_CFG || touch $ANSIBLE_CFG && \
 test -f $HISTORY_FILE || touch $HISTORY_FILE && \
-{ docker build --platform=linux/amd64 -t tops --build-arg USER_ID=${USER_ID} -f - . <<-\EOF
+LXD_SOCKET="/var/snap/lxd/common/lxd/unix.socket"
+LXD_GID=$(stat -c '%g' ${LXD_SOCKET} 2>/dev/null || echo "")
+LXD_BUILD_ARG=""
+if [ -n "$LXD_GID" ]; then LXD_BUILD_ARG="--build-arg LXD_GID=${LXD_GID}"; fi
+
+{ docker build --platform=linux/amd64 -t tops --build-arg USER_ID=${USER_ID} ${LXD_BUILD_ARG} -f - . <<-\EOF
   FROM amd64/ubuntu:22.04 AS builder
   ARG LASTPASS_VERSION=1.6.1
   RUN apt-get update && \
@@ -90,10 +95,13 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   ARG GCLOUD_VERSION=473.0.0-0
   ARG VIRTUALBOX_VERSION=7.0
   ARG INFINISPAN_QUARKUS_VERSION=14.0.34.Final
+  ARG LXD_VERSION=5.21.4
+  ARG LXD_GID=""
   ARG NODE_VERSION=22
   ARG USER_ID
 
-  RUN useradd -u ${USER_ID} -s /bin/bash -d /home/tops -m tops
+  RUN useradd -u ${USER_ID} -s /bin/bash -d /home/tops -m tops && \
+      if [ -n "${LXD_GID}" ]; then groupadd -g ${LXD_GID} lxd && usermod -aG lxd tops; fi
 
   RUN apt-get update && \
       apt-get install -y curl gpg locales lsb-release tzdata wget && \
@@ -130,6 +138,9 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
         virtualbox-7.0 \
       && \
       echo 'source /usr/share/bash-completion/bash_completion' >> /home/tops/.bashrc
+
+  RUN curl -Ls https://github.com/canonical/lxd/releases/download/lxd-${LXD_VERSION}/bin.linux.lxc.x86_64 -o /usr/local/bin/lxc && \
+      chmod +x /usr/local/bin/lxc
 
   RUN apt-get install -y golang-${GOLANG_VERSION}-go
 
@@ -263,7 +274,8 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       apt-get install -y nodejs && \
       npm install -g @openai/codex
 
-  RUN chown -R tops:tops /home/tops
+  RUN mkdir -p /home/tops/.config/lxc && \
+      chown -R tops:tops /home/tops
   RUN apt-get install systemd
 
   USER tops
@@ -300,6 +312,8 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
 EOF
 } && \
 echo "ContainerName ${CONTAINER_NAME}" && \
+LXD_DOCKER_ARGS="" && \
+if [ -S "$LXD_SOCKET" ]; then LXD_DOCKER_ARGS="-v ${LXD_SOCKET}:${LXD_SOCKET} --group-add ${LXD_GID}"; fi && \
 docker run \
   --rm \
   --privileged \
@@ -325,6 +339,7 @@ docker run \
   -v ${SSH_AUTH_SOCK}:${MY_SSH_AUTH_SOCK}:rw \
   -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
   -v /tmp/tops:/tmp/tops \
+  ${LXD_DOCKER_ARGS} \
   --device /dev/vboxdrv:/dev/vboxdrv \
   --env SSH_AUTH_SOCK=${MY_SSH_AUTH_SOCK} \
   --env PROMPT_COMMAND='history -a' \
