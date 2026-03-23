@@ -44,12 +44,11 @@ test -f $_arg_env_file || touch $_arg_env_file && \
 test -f $_arg_utils_path || mkdir -p $_arg_utils_path && \
 test -f $ANSIBLE_CFG || touch $ANSIBLE_CFG && \
 test -f $HISTORY_FILE || touch $HISTORY_FILE && \
-LXD_SOCKET="/var/snap/lxd/common/lxd/unix.socket"
-LXD_GID=$(stat -c '%g' ${LXD_SOCKET} 2>/dev/null || echo "")
-LXD_BUILD_ARG=""
-if [ -n "$LXD_GID" ]; then LXD_BUILD_ARG="--build-arg LXD_GID=${LXD_GID}"; fi
+LIBVIRT_GID_BUILD=$(stat -c '%g' /var/run/libvirt/libvirt-sock 2>/dev/null || echo "")
+LIBVIRT_BUILD_ARG=""
+if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=${LIBVIRT_GID_BUILD}"; fi
 
-{ docker build --platform=linux/amd64 -t tops --build-arg USER_ID=${USER_ID} ${LXD_BUILD_ARG} -f - . <<-\EOF
+{ docker build --platform=linux/amd64 -t tops --build-arg USER_ID=${USER_ID} ${LIBVIRT_BUILD_ARG} -f - . <<-\EOF
   FROM amd64/ubuntu:22.04 AS builder
   ARG LASTPASS_VERSION=1.6.1
   RUN apt-get update && \
@@ -95,13 +94,12 @@ if [ -n "$LXD_GID" ]; then LXD_BUILD_ARG="--build-arg LXD_GID=${LXD_GID}"; fi
   ARG GCLOUD_VERSION=473.0.0-0
   ARG VIRTUALBOX_VERSION=7.0
   ARG INFINISPAN_QUARKUS_VERSION=14.0.34.Final
-  ARG LXD_VERSION=5.21.4
-  ARG LXD_GID=""
+  ARG LIBVIRT_GID=""
   ARG NODE_VERSION=22
   ARG USER_ID
 
   RUN useradd -u ${USER_ID} -s /bin/bash -d /home/tops -m tops && \
-      if [ -n "${LXD_GID}" ]; then groupadd -g ${LXD_GID} lxd && usermod -aG lxd tops; fi
+      if [ -n "${LIBVIRT_GID}" ]; then groupadd -g ${LIBVIRT_GID} libvirt 2>/dev/null || true; usermod -aG libvirt tops; fi
 
   RUN apt-get update && \
       apt-get install -y curl gpg locales lsb-release tzdata wget && \
@@ -138,9 +136,6 @@ if [ -n "$LXD_GID" ]; then LXD_BUILD_ARG="--build-arg LXD_GID=${LXD_GID}"; fi
         virtualbox-7.0 \
       && \
       echo 'source /usr/share/bash-completion/bash_completion' >> /home/tops/.bashrc
-
-  RUN curl -Ls https://github.com/canonical/lxd/releases/download/lxd-${LXD_VERSION}/bin.linux.lxc.x86_64 -o /usr/local/bin/lxc && \
-      chmod +x /usr/local/bin/lxc
 
   RUN apt-get install -y golang-${GOLANG_VERSION}-go
 
@@ -209,7 +204,7 @@ if [ -n "$LXD_GID" ]; then LXD_BUILD_ARG="--build-arg LXD_GID=${LXD_GID}"; fi
               distlib \
               boto3 \
               kubernetes==${KUBERNETES_PYTHON_VERSION} \
-              molecule-vagrant \
+              "molecule-plugins[vagrant]" \
               openshift==${OPENSHIFT_VERSION} \
               testinfra \
               yq
@@ -274,9 +269,14 @@ if [ -n "$LXD_GID" ]; then LXD_BUILD_ARG="--build-arg LXD_GID=${LXD_GID}"; fi
       apt-get install -y nodejs && \
       npm install -g @openai/codex
 
-  RUN mkdir -p /home/tops/.config/lxc && \
-      chown -R tops:tops /home/tops
-  RUN apt-get install systemd
+  RUN chown -R tops:tops /home/tops
+  RUN apt-get install -y systemd libvirt-dev libvirt-clients
+
+  # molecule-plugins vagrant module discovery: symlink modules/ into playbooks/library/
+  RUN python3 -c "import os, molecule_plugins.vagrant as mv; \
+      src=os.path.join(os.path.dirname(mv.__file__), 'modules'); \
+      dst=os.path.join(os.path.dirname(mv.__file__), 'playbooks', 'library'); \
+      os.symlink(src, dst)" 2>/dev/null || true
 
   USER tops
 
@@ -311,9 +311,12 @@ if [ -n "$LXD_GID" ]; then LXD_BUILD_ARG="--build-arg LXD_GID=${LXD_GID}"; fi
 
 EOF
 } && \
+LIBVIRT_DOCKER_ARGS="" && \
+if [ -S "/var/run/libvirt/libvirt-sock" ] && [ -c "/dev/kvm" ]; then
+  LIBVIRT_GID=$(stat -c '%g' /var/run/libvirt/libvirt-sock)
+  LIBVIRT_DOCKER_ARGS="-v /var/run/libvirt/libvirt-sock:/var/run/libvirt/libvirt-sock --device /dev/kvm:/dev/kvm --group-add ${LIBVIRT_GID} -e LIBVIRT_DEFAULT_URI=qemu:///system"
+fi && \
 echo "ContainerName ${CONTAINER_NAME}" && \
-LXD_DOCKER_ARGS="" && \
-if [ -S "$LXD_SOCKET" ]; then LXD_DOCKER_ARGS="-v ${LXD_SOCKET}:${LXD_SOCKET} --group-add ${LXD_GID}"; fi && \
 docker run \
   --rm \
   --privileged \
@@ -339,7 +342,7 @@ docker run \
   -v ${SSH_AUTH_SOCK}:${MY_SSH_AUTH_SOCK}:rw \
   -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
   -v /tmp/tops:/tmp/tops \
-  ${LXD_DOCKER_ARGS} \
+  ${LIBVIRT_DOCKER_ARGS} \
   --device /dev/vboxdrv:/dev/vboxdrv \
   --env SSH_AUTH_SOCK=${MY_SSH_AUTH_SOCK} \
   --env PROMPT_COMMAND='history -a' \
