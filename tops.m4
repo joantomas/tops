@@ -65,7 +65,10 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
               libxml2-dev  \
               pkg-config \
               ca-certificates \
-              xclip
+              xclip \
+              systemd \
+              libvirt-dev \
+              libvirt-clients
   RUN mkdir /tmp/lastpass-cli && \
       curl -L https://github.com/lastpass/lastpass-cli/releases/download/v${LASTPASS_VERSION}/lastpass-cli-${LASTPASS_VERSION}.tar.gz | \
       tar -zx -C /tmp/lastpass-cli --strip-components=1
@@ -270,7 +273,6 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
       npm install -g @openai/codex
 
   RUN chown -R tops:tops /home/tops
-  RUN apt-get install -y systemd libvirt-dev libvirt-clients
 
   # molecule-plugins vagrant module discovery: symlink modules/ into playbooks/library/
   RUN python3 -c "import os, molecule_plugins.vagrant as mv; \
