@@ -66,7 +66,8 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
               pkg-config \
               ca-certificates \
               xclip \
-              systemd libvirt-dev \
+              systemd \
+              libvirt-dev \
               libvirt-clients
   RUN mkdir /tmp/lastpass-cli && \
       curl -L https://github.com/lastpass/lastpass-cli/releases/download/v${LASTPASS_VERSION}/lastpass-cli-${LASTPASS_VERSION}.tar.gz | \
