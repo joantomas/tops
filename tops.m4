@@ -65,10 +65,7 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
               libxml2-dev  \
               pkg-config \
               ca-certificates \
-              xclip \
-              systemd \
-              libvirt-dev \
-              libvirt-clients
+              xclip
   RUN mkdir /tmp/lastpass-cli && \
       curl -L https://github.com/lastpass/lastpass-cli/releases/download/v${LASTPASS_VERSION}/lastpass-cli-${LASTPASS_VERSION}.tar.gz | \
       tar -zx -C /tmp/lastpass-cli --strip-components=1
@@ -137,6 +134,8 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
         vagrant \
         vim \
         virtualbox-7.0 \
+        libvirt-dev \
+        libvirt-clients \
       && \
       echo 'source /usr/share/bash-completion/bash_completion' >> /home/tops/.bashrc
 
