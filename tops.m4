@@ -40,7 +40,7 @@ esac
 
 mkdir -p /tmp/tops
 mkdir -p ${HOME}/.codex
-mkdir -p ${HOME}/.cache/molecule
+mkdir -p ${HOME}/.ansible/tmp
 test -f $_arg_env_file || touch $_arg_env_file && \
 test -f $_arg_utils_path || mkdir -p $_arg_utils_path && \
 test -f $ANSIBLE_CFG || touch $ANSIBLE_CFG && \
@@ -337,7 +337,7 @@ docker run \
   -v ${HOME}/.terraform.d/plugin-cache:/home/tops/.terraform.d/plugin-cache \
   -v ${HOME}/.vault_password_file:/home/tops/.vault_password_file \
   -v ${HOME}/.vagrant.d:/home/tops/.vagrant.d \
-  -v ${HOME}/.cache/molecule:/home/tops/.cache/molecule \
+  -v ${HOME}/.ansible/tmp:/home/tops/.ansible/tmp \
   -v ${HOME}/VirtualBox\ VMs:/home/tops/VirtualBox\ VMs \
   -v ${HOME}/.terraformStatesBucketGCS.json:/home/tops/.terraformStatesBucketGCS.json:ro \
   -v ${ANSIBLE_CFG}:/home/tops/.ansible.cfg \
