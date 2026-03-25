@@ -138,7 +138,9 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
         libvirt-dev \
         libvirt-clients \
       && \
-      echo 'source /usr/share/bash-completion/bash_completion' >> /home/tops/.bashrc
+      echo 'source /usr/share/bash-completion/bash_completion' >> /home/tops/.bashrc && \
+      vagrant plugin install vagrant-libvirt
+
 
   RUN apt-get install -y golang-${GOLANG_VERSION}-go
 
