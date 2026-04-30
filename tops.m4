@@ -89,6 +89,7 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
   ARG LOCALE_SETUP=en_US.UTF-8
   ARG OPENSHIFT_VERSION=0.13.1 #https://github.com/kubernetes-client/python/issues/
   ARG SOPS_VERSION=3.10.2
+  ARG HELM_SOPS_VER=20220419-3
   ARG TERRAFORM_PROVIDER_KUBECTL_VERSION=1.19
   ARG TERRAFORM_PROVIDER_SOPS_VERSION=1.2.1
   ARG TERRAFORM_VERSION=1.13.3
@@ -156,7 +157,7 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
       mv helm /usr/local/bin/ && \
       helm plugin install https://github.com/zendesk/helm-secrets
 
-  RUN curl -Ls https://github.com/camptocamp/helm-sops/releases/download/20201003-1/helm-sops_20201003-1_linux_amd64.tar.gz | tar -zx -C /usr/local/bin && \
+  RUN curl -Ls https://github.com/camptocamp/helm-sops/releases/download/${HELM_SOPS_VER}/helm-sops_${HELM_SOPS_VER}_linux_amd64.tar.gz | tar -zx -C /usr/local/bin && \
       mv /usr/local/bin/helm /usr/local/bin/_helm && \
       mv /usr/local/bin/helm-sops /usr/local/bin/helm && \
       chmod a+x /usr/local/bin/helm
