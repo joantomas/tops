@@ -77,6 +77,7 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
   ARG ANSIBLE_VERSION=9.8.0
   ARG ANSIBLE_COMMUNITY_GENERAL_COLLECTION_VERSION=11.2.0
   ARG CALICOCTL_VERSION=v3.29.5
+  ARG CMCTL_VERSION=v2.5.0
   ARG DELTA_VERSION=0.18.1
   ARG DRIFTCTL_VERSION=0.40.0
   ARG GOLANG_VERSION=1.18
@@ -282,6 +283,10 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
       src=os.path.join(os.path.dirname(mv.__file__), 'modules'); \
       dst=os.path.join(os.path.dirname(mv.__file__), 'playbooks', 'library'); \
       os.symlink(src, dst)" 2>/dev/null || true
+
+  RUN curl -fsSL -o /usr/local/bin/cmctl \
+      https://github.com/cert-manager/cmctl/releases/download/${CMCTL_VERSION}/cmctl_linux_amd64 \
+      && chmod +x /usr/local/bin/cmctl
 
   USER tops
 
