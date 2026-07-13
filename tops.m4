@@ -94,6 +94,7 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
   ARG TERRAFORM_PROVIDER_KUBECTL_VERSION=1.19
   ARG TERRAFORM_PROVIDER_SOPS_VERSION=1.2.1
   ARG TERRAFORM_VERSION=1.13.3
+  ARG TERRAGRUNT_VERSION=1.1.0
   ARG GCLOUD_VERSION=473.0.0-0
   ARG VIRTUALBOX_VERSION=7.0
   ARG INFINISPAN_QUARKUS_VERSION=14.0.34.Final
@@ -178,6 +179,10 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
       chmod +x /usr/local/bin/terraform && \
       mkdir -p /home/tops/.terraform.d/plugins && \
       terraform -install-autocomplete
+
+  RUN curl -Ls "https://github.com/gruntwork-io/terragrunt/releases/download/v${TERRAGRUNT_VERSION}/terragrunt_linux_amd64" \
+      -o /usr/local/bin/terragrunt && \
+      chmod +x /usr/local/bin/terragrunt
 
   RUN curl -Ls https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o /tmp/awscliv2.zip && \
       unzip -q /tmp/awscliv2.zip -d /tmp && \
