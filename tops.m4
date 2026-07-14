@@ -49,7 +49,7 @@ LIBVIRT_GID_BUILD=$(stat -c '%g' /var/run/libvirt/libvirt-sock 2>/dev/null || ec
 LIBVIRT_BUILD_ARG=""
 if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=${LIBVIRT_GID_BUILD}"; fi
 
-{ docker build --platform=linux/amd64 -t tops --build-arg USER_ID=${USER_ID} ${LIBVIRT_BUILD_ARG} -f - . <<-\EOF
+{ docker buildx build --platform=linux/amd64 -t tops --build-arg USER_ID=${USER_ID} ${LIBVIRT_BUILD_ARG} -f - . <<-\EOF
   FROM amd64/ubuntu:22.04 AS builder
   ARG LASTPASS_VERSION=1.6.1
   RUN apt-get update && \
@@ -97,7 +97,7 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
   ARG TERRAGRUNT_VERSION=1.1.0
   ARG GCLOUD_VERSION=473.0.0-0
   ARG VIRTUALBOX_VERSION=7.0
-  ARG INFINISPAN_QUARKUS_VERSION=14.0.34.Final
+  ARG INFINISPAN_QUARKUS_VERSION=16.0.13
   ARG LIBVIRT_GID=""
   ARG NODE_VERSION=22
   ARG USER_ID
@@ -265,9 +265,9 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
       apt-get update -y && \
       apt-get install -y google-cloud-cli=${GCLOUD_VERSION}
 
-  RUN curl -L https://github.com/infinispan/infinispan-quarkus/releases/download/${INFINISPAN_QUARKUS_VERSION}/infinispan-cli-${INFINISPAN_QUARKUS_VERSION}-linux-amd64.zip \
+  RUN curl -L https://github.com/infinispan/infinispan/releases/download/${INFINISPAN_QUARKUS_VERSION}/infinispan-cli-${INFINISPAN_QUARKUS_VERSION}-linux-x86_64.zip \
       -o /tmp/infinispan.zip && \
-      unzip -j /tmp/infinispan.zip infinispan-cli-${INFINISPAN_QUARKUS_VERSION}/infinispan-cli -d /usr/local/bin/ && \
+      unzip -j /tmp/infinispan.zip infinispan-cli-${INFINISPAN_QUARKUS_VERSION}-linux-x86_64/infinispan-cli -d /usr/local/bin/ && \
       mv /usr/local/bin/infinispan-cli /usr/local/bin/kubectl-infinispan && \
       chmod +x /usr/local/bin/kubectl-infinispan && \
       rm /tmp/infinispan.zip
@@ -276,10 +276,6 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
       echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \
       apt-get update && \
       apt-get install -y gh
-
-  RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - && \
-      apt-get install -y nodejs && \
-      npm install -g @openai/codex
 
   RUN chown -R tops:tops /home/tops
 
@@ -321,6 +317,8 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
 
   RUN curl -fsSL https://claude.ai/install.sh | bash && \
       echo "export PATH=\$PATH:\${HOME}/.local/bin" >> /home/tops/.bashrc
+
+  RUN curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_HOME=/home/tops/.codex-install CODEX_NON_INTERACTIVE=1 sh
 
   WORKDIR /workspace
 
