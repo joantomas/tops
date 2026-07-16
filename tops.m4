@@ -21,6 +21,8 @@ printf "Value of '%s': %s\n" 'Workspace path' "$_arg_workspace_path"
 ANSIBLE_CFG="${HOME}/.ansible.cfg"
 HISTORY_FILE="${HOME}/.bash_history"
 WORKSPACE_HINT=$(basename "${_arg_workspace_path}")
+WORKSPACE_ORG=$(basename "$(dirname "${_arg_workspace_path}")")
+CONTAINER_WORKDIR="/workspace/${WORKSPACE_ORG}/${WORKSPACE_HINT}"
 CONTAINER_UUID=$(cat /dev/urandom | LC_ALL=C tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)
 CONTAINER_NAME="tops-${WORKSPACE_HINT}-${CONTAINER_UUID}"
 USER_ID=$(id -u)
@@ -313,6 +315,8 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
 
   RUN echo "export PATH=/home/tops/utils:\$PATH" >> /home/tops/.bashrc
 
+  RUN echo 'echo "This tops container is reachable from the host at $(hostname -i) - any port you bind to 0.0.0.0 is reachable at http://$(hostname -i):<port> (e.g. kubectl port-forward --address 0.0.0.0 -n <ns> svc/<svc> <port>:<targetPort>)"' >> /home/tops/.bashrc
+
   COPY --from=builder /tmp/lastpass-cli/build/lpass /usr/bin/
 
   RUN curl -fsSL https://claude.ai/install.sh | bash && \
@@ -333,7 +337,7 @@ echo "ContainerName ${CONTAINER_NAME}" && \
 docker run \
   --rm \
   --privileged \
-  -v ${_arg_workspace_path}:/workspace \
+  -v ${_arg_workspace_path}:${CONTAINER_WORKDIR} \
   -v ${_arg_utils_path}:/home/tops/utils \
   -v ${HOME}/.aws/credentials:/home/tops/.aws/credentials:ro \
   -v ${HOME}/.aws/config:/home/tops/.aws/config:ro \
@@ -362,10 +366,10 @@ docker run \
   --env PROMPT_COMMAND='history -a' \
   --env CONTAINER_NAME=${CONTAINER_NAME} \
   --name ${CONTAINER_NAME} \
+  -w ${CONTAINER_WORKDIR} \
   --env-file $_arg_env_file \
   --platform="linux/amd64" \
   -ti \
-  -p 9090-9095 \
   tops
 # ^^^  TERMINATE YOUR CODE BEFORE THE BOTTOM ARGBASH MARKER  ^^^
 
