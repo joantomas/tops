@@ -46,6 +46,25 @@ likewise bind `0.0.0.0`, not `127.0.0.1`.
 Note: this direct-IP access is Linux-specific. On a macOS/Windows Docker Desktop host the bridge IP is not
 routable from the host, and you would need to publish ports instead.
 
+## Docker inside the container (docker-in-docker)
+
+The image ships the Docker engine, but the daemon is **not** started automatically. Start it on demand
+from inside the tops session:
+
+```shell
+dockerd-start      # launches dockerd in the background and waits until it is ready
+docker compose up  # docker / docker compose now work
+dockerd-stop       # optional; the daemon is torn down anyway when the container exits
+```
+
+Because this is real docker-in-docker (not the host's daemon), `$(pwd)` and bind mounts refer to the
+container's filesystem, so `docker compose` volumes that mount the repo work as expected.
+
+Storage is **per session**: each container gets its own `/var/lib/docker` (an anonymous volume) that is
+removed when the container exits, so several tops containers can run at once without clashing. Images and
+built layers therefore do not persist between runs; to keep them, replace the anonymous `-v /var/lib/docker`
+with a per-project named volume in `tops.m4`.
+
 ## IDE integration
 
 Claude Code's IDE integration uses a local WebSocket server on `127.0.0.1` (an ephemeral port) plus a lock
