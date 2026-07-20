@@ -291,6 +291,33 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
       https://github.com/cert-manager/cmctl/releases/download/${CMCTL_VERSION}/cmctl_linux_amd64 \
       && chmod +x /usr/local/bin/cmctl
 
+  # Docker engine for docker-in-docker; the daemon is NOT started at boot,
+  # run `dockerd-start` on demand inside the session.
+  RUN install -m 0755 -d /etc/apt/keyrings && \
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc && \
+      chmod a+r /etc/apt/keyrings/docker.asc && \
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null && \
+      apt-get update && \
+      apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin sudo && \
+      groupadd -f docker && usermod -aG docker tops && \
+      echo 'tops ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/tops && chmod 0440 /etc/sudoers.d/tops
+
+  RUN printf '%s\n' \
+        '#!/bin/bash' \
+        'set -e' \
+        'if docker info >/dev/null 2>&1; then echo "dockerd already running"; exit 0; fi' \
+        'echo "Starting dockerd (dind)..."' \
+        'sudo -b sh -c "dockerd >/tmp/dockerd.log 2>&1"' \
+        'for i in $(seq 1 30); do docker info >/dev/null 2>&1 && break; sleep 1; done' \
+        'docker info >/dev/null 2>&1 && echo "dockerd ready" || { echo "dockerd failed to start - see /tmp/dockerd.log"; exit 1; }' \
+      > /usr/local/bin/dockerd-start && \
+      printf '%s\n' \
+        '#!/bin/bash' \
+        'sudo pkill -TERM dockerd 2>/dev/null || true' \
+        'echo "dockerd stopped"' \
+      > /usr/local/bin/dockerd-stop && \
+      chmod +x /usr/local/bin/dockerd-start /usr/local/bin/dockerd-stop
+
   USER tops
 
   RUN set -x; cd "$(mktemp -d)" && \
@@ -358,7 +385,9 @@ docker run \
   -v ${ANSIBLE_CFG}:/home/tops/.ansible.cfg \
   -v ${HISTORY_FILE}:/home/tops/.bash_history:rw \
   -v ${SSH_AUTH_SOCK}:${MY_SSH_AUTH_SOCK}:rw \
-  -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
+  -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
+  -v /var/lib/docker \
+  --cgroupns=host \
   -v /tmp/tops:/tmp/tops \
   ${LIBVIRT_DOCKER_ARGS} \
   --device /dev/vboxdrv:/dev/vboxdrv \
