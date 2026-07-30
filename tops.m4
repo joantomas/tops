@@ -123,6 +123,7 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
         bash-completion \
         gcc \
         git \
+        git-crypt \
         groff \
         iputils-ping \
         jq \
@@ -377,7 +378,8 @@ docker run \
   -v ${HOME}/.kube:/home/tops/.kube:ro \
   -v ${HOME}/.terraformrc:/home/tops/.terraformrc:ro \
   -v ${HOME}/.terraform.d/plugin-cache:/home/tops/.terraform.d/plugin-cache \
-  -v ${HOME}/.vault_password_file:/home/tops/.vault_password_file \
+  -v ${HOME}/.vault_password_file:/home/tops/.vault_password_file:ro \
+  -v ${HOME}/.crypt_password_file:/home/tops/.crypt_password_file:ro
   -v ${HOME}/.vagrant.d:/home/tops/.vagrant.d \
   -v ${HOME}/.ansible/tmp:/home/tops/.ansible/tmp \
   -v ${HOME}/VirtualBox\ VMs:/home/tops/VirtualBox\ VMs \
