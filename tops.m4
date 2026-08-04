@@ -379,7 +379,7 @@ docker run \
   -v ${HOME}/.terraformrc:/home/tops/.terraformrc:ro \
   -v ${HOME}/.terraform.d/plugin-cache:/home/tops/.terraform.d/plugin-cache \
   -v ${HOME}/.vault_password_file:/home/tops/.vault_password_file:ro \
-  -v ${HOME}/.crypt_password_file:/home/tops/.crypt_password_file:ro
+  -v ${HOME}/.crypt_password_file:/home/tops/.crypt_password_file:ro \
   -v ${HOME}/.vagrant.d:/home/tops/.vagrant.d \
   -v ${HOME}/.ansible/tmp:/home/tops/.ansible/tmp \
   -v ${HOME}/VirtualBox\ VMs:/home/tops/VirtualBox\ VMs \
