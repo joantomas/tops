@@ -20,8 +20,11 @@ printf "Value of '%s': %s\n" 'Workspace path' "$_arg_workspace_path"
 
 ANSIBLE_CFG="${HOME}/.ansible.cfg"
 HISTORY_FILE="${HOME}/.bash_history"
+WORKSPACE_HINT=$(basename "${_arg_workspace_path}")
+WORKSPACE_ORG=$(basename "$(dirname "${_arg_workspace_path}")")
+CONTAINER_WORKDIR="/workspace/${WORKSPACE_ORG}/${WORKSPACE_HINT}"
 CONTAINER_UUID=$(cat /dev/urandom | LC_ALL=C tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)
-CONTAINER_NAME="tops-${CONTAINER_UUID}"
+CONTAINER_NAME="tops-${WORKSPACE_HINT}-${CONTAINER_UUID}"
 USER_ID=$(id -u)
 
 case "$(uname -s)" in
@@ -38,11 +41,17 @@ case "$(uname -s)" in
 esac
 
 mkdir -p /tmp/tops
+mkdir -p ${HOME}/.codex
+mkdir -p ${HOME}/.ansible/tmp
 test -f $_arg_env_file || touch $_arg_env_file && \
 test -f $_arg_utils_path || mkdir -p $_arg_utils_path && \
 test -f $ANSIBLE_CFG || touch $ANSIBLE_CFG && \
 test -f $HISTORY_FILE || touch $HISTORY_FILE && \
-{ docker build --platform=linux/amd64 -t tops --build-arg USER_ID=${USER_ID} -f - . <<-\EOF
+LIBVIRT_GID_BUILD=$(stat -c '%g' /var/run/libvirt/libvirt-sock 2>/dev/null || echo "")
+LIBVIRT_BUILD_ARG=""
+if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=${LIBVIRT_GID_BUILD}"; fi
+
+{ docker buildx build --platform=linux/amd64 -t tops --build-arg USER_ID=${USER_ID} ${LIBVIRT_BUILD_ARG} -f - . <<-\EOF
   FROM amd64/ubuntu:22.04 AS builder
   ARG LASTPASS_VERSION=1.6.1
   RUN apt-get update && \
@@ -65,32 +74,38 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       tar -zx -C /tmp/lastpass-cli --strip-components=1
   RUN cd /tmp/lastpass-cli && export CFLAGS="-fcommon" && make
 
-  FROM ubuntu:22.04
+  FROM amd64/ubuntu:22.04
 
-  ARG ANSIBLE_VERSION=10.2.0
-  ARG ANSIBLE_COMMUNITY_GENERAL_COLLECTION_VERSION=9.2.0
-  ARG CALICOCTL_VERSION=v3.25.1
+  ARG ANSIBLE_VERSION=9.8.0
+  ARG ANSIBLE_COMMUNITY_GENERAL_COLLECTION_VERSION=11.2.0
+  ARG CALICOCTL_VERSION=v3.29.5
+  ARG CMCTL_VERSION=v2.5.0
   ARG DELTA_VERSION=0.18.1
-  ARG DRIFTCTL_VERSION=0.9.0
+  ARG DRIFTCTL_VERSION=0.40.0
   ARG GOLANG_VERSION=1.18
-  ARG HELM_VERSION=3.5.4
-  ARG ISTIO_VERSION=1.17.1
-  ARG KUBECTL_VERSION=1.26.3
-  ARG K9S_VERSION=0.19.5
-  ARG KUBERNETES_PYTHON_VERSION=12.0.1
-  ARG KUSTOMIZE_VERSION=v3.10.0
+  ARG HELM_VERSION=3.10.1
+  ARG ISTIO_VERSION=1.27.1
+  ARG KUBECTL_VERSION=1.32.8
+  ARG K9S_VERSION=0.50.9
+  ARG KUBERNETES_PYTHON_VERSION=33.1.0
+  ARG KUSTOMIZE_VERSION=v5.5.0
   ARG LOCALE_SETUP=en_US.UTF-8
-  ARG OPENSHIFT_VERSION=0.13.1 #https://github.com/kubernetes-client/python/issues/1333
-  ARG RKE_VERSION=1.2.11
-  ARG SOPS_VERSION=3.5.0
-  ARG TERRAFORM_PROVIDER_KUBECTL_VERSION=1.3.1
-  ARG TERRAFORM_PROVIDER_SOPS_VERSION=0.5.0
-  ARG TERRAFORM_VERSION=0.14.6
+  ARG OPENSHIFT_VERSION=0.13.1 #https://github.com/kubernetes-client/python/issues/
+  ARG SOPS_VERSION=3.10.2
+  ARG HELM_SOPS_VER=20220419-3
+  ARG TERRAFORM_PROVIDER_KUBECTL_VERSION=1.19
+  ARG TERRAFORM_PROVIDER_SOPS_VERSION=1.2.1
+  ARG TERRAFORM_VERSION=1.13.3
+  ARG TERRAGRUNT_VERSION=1.1.0
   ARG GCLOUD_VERSION=473.0.0-0
   ARG VIRTUALBOX_VERSION=7.0
+  ARG INFINISPAN_QUARKUS_VERSION=16.0.13
+  ARG LIBVIRT_GID=""
+  ARG NODE_VERSION=22
   ARG USER_ID
 
-  RUN useradd -u ${USER_ID} -s /bin/bash -d /home/tops -m tops
+  RUN useradd -u ${USER_ID} -s /bin/bash -d /home/tops -m tops && \
+      if [ -n "${LIBVIRT_GID}" ]; then groupadd -g ${LIBVIRT_GID} libvirt 2>/dev/null || true; usermod -aG libvirt tops; fi
 
   RUN apt-get update && \
       apt-get install -y curl gpg locales lsb-release tzdata wget && \
@@ -108,6 +123,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
         bash-completion \
         gcc \
         git \
+        git-crypt \
         groff \
         iputils-ping \
         jq \
@@ -115,15 +131,22 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
         python3-jsonpatch \
         python3-netaddr \
         python3-passlib \
-        python3-pip dnsutils \
+        python3-pip \
+        python3-distlib \
+        dnsutils \
         rsync \
         software-properties-common \
+        tmux \
         unzip \
         vagrant \
         vim \
         virtualbox-7.0 \
+        libvirt-dev \
+        libvirt-clients \
       && \
-      echo 'source /usr/share/bash-completion/bash_completion' >> /home/tops/.bashrc
+      echo 'source /usr/share/bash-completion/bash_completion' >> /home/tops/.bashrc && \
+      vagrant plugin install vagrant-libvirt
+
 
   RUN apt-get install -y golang-${GOLANG_VERSION}-go
 
@@ -139,12 +162,12 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       mv helm /usr/local/bin/ && \
       helm plugin install https://github.com/zendesk/helm-secrets
 
-  RUN curl -Ls https://github.com/camptocamp/helm-sops/releases/download/20201003-1/helm-sops_20201003-1_linux_amd64.tar.gz | tar -zx -C /usr/local/bin && \
+  RUN curl -Ls https://github.com/camptocamp/helm-sops/releases/download/${HELM_SOPS_VER}/helm-sops_${HELM_SOPS_VER}_linux_amd64.tar.gz | tar -zx -C /usr/local/bin && \
       mv /usr/local/bin/helm /usr/local/bin/_helm && \
       mv /usr/local/bin/helm-sops /usr/local/bin/helm && \
       chmod a+x /usr/local/bin/helm
 
-  RUN curl -Ls https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl && \
+  RUN curl -Ls https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl && \
       chmod +x /usr/local/bin/kubectl && \
       echo 'source <(kubectl completion bash)' >> /home/tops/.bashrc && \
       echo 'alias k=kubectl' >> /home/tops/.bashrc && \
@@ -153,10 +176,16 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       echo 'export now="--force --grace-period=0"' >> /home/tops/.bashrc && \
       echo 'complete -F __start_kubectl k' >> /home/tops/.bashrc
 
-  RUN curl -Ls https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip | gunzip > /usr/local/bin/terraform && \
+  RUN curl -Ls -o /tmp/terraform.zip https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip && \
+      unzip /tmp/terraform.zip terraform -d /usr/local/bin/ && \
+      rm -f /tmp/terraform.zip && \
       chmod +x /usr/local/bin/terraform && \
       mkdir -p /home/tops/.terraform.d/plugins && \
       terraform -install-autocomplete
+
+  RUN curl -Ls "https://github.com/gruntwork-io/terragrunt/releases/download/v${TERRAGRUNT_VERSION}/terragrunt_linux_amd64" \
+      -o /usr/local/bin/terragrunt && \
+      chmod +x /usr/local/bin/terragrunt
 
   RUN curl -Ls https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o /tmp/awscliv2.zip && \
       unzip -q /tmp/awscliv2.zip -d /tmp && \
@@ -175,17 +204,13 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
            -o /home/tops/.terraform.d/plugins/terraform-provider-kubectl_v${TERRAFORM_PROVIDER_KUBECTL_VERSION} && \
       chmod +x /home/tops/.terraform.d/plugins/terraform-provider-kubectl_v${TERRAFORM_PROVIDER_KUBECTL_VERSION}
 
-  RUN curl -Ls https://github.com/carlpett/terraform-provider-sops/releases/download/v${TERRAFORM_PROVIDER_SOPS_VERSION}/terraform-provider-sops_v${TERRAFORM_PROVIDER_SOPS_VERSION}_linux_amd64.zip \
+  RUN curl -Ls https://github.com/carlpett/terraform-provider-sops/releases/download/v${TERRAFORM_PROVIDER_SOPS_VERSION}/terraform-provider-sops_${TERRAFORM_PROVIDER_SOPS_VERSION}_linux_amd64.zip \
            -o /tmp/terraform-provider-sops.zip && \
       unzip -j /tmp/terraform-provider-sops.zip -d /home/tops/.terraform.d/plugins/ && \
       chmod +x /home/tops/.terraform.d/plugins/terraform-provider-sops_v${TERRAFORM_PROVIDER_SOPS_VERSION}
 
-  RUN curl -Ls https://github.com/derailed/k9s/releases/download/v${K9S_VERSION}/k9s_Linux_x86_64.tar.gz | tar -zx k9s && \
+  RUN curl -Ls https://github.com/derailed/k9s/releases/download/v${K9S_VERSION}/k9s_Linux_amd64.tar.gz  | tar -zx k9s && \
       mv k9s /usr/local/bin/
-
-  RUN curl -Ls https://github.com/rancher/rke/releases/download/v${RKE_VERSION}/rke_linux-amd64 \
-           -o /usr/local/bin/rke && \
-           chmod a+x /usr/local/bin/rke
 
   RUN pip3 install \
               "molecule[lint]" \
@@ -194,12 +219,12 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
               distlib \
               boto3 \
               kubernetes==${KUBERNETES_PYTHON_VERSION} \
-              molecule-vagrant \
+              "molecule-plugins[vagrant]" \
               openshift==${OPENSHIFT_VERSION} \
               testinfra \
               yq
 
-  RUN curl -L https://github.com/cloudskiff/driftctl/releases/download/v${DRIFTCTL_VERSION}/driftctl_linux_amd64 -o /usr/local/bin/driftctl && \
+  RUN curl -L https://github.com/snyk/driftctl/releases/download/v${DRIFTCTL_VERSION}/driftctl_linux_amd64 -o /usr/local/bin/driftctl && \
       chmod a+x /usr/local/bin/driftctl
 
   RUN curl -Ls https://github.com/turbot/steampipe/releases/latest/download/steampipe_linux_amd64.tar.gz -o /tmp/steampipe.tar.gz && \
@@ -210,10 +235,11 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       rm -rf /tmp/steampipe*
 
   RUN curl -L https://github.com/istio/istio/releases/download/${ISTIO_VERSION}/istio-${ISTIO_VERSION}-linux-amd64.tar.gz | tar -zx -C /usr/local/src && \
-      echo "export PATH=$PATH:/usr/local/src/istio-${ISTIO_VERSION}/bin" >> /home/tops/.bashrc && \
+      echo "export PATH=\$PATH:/usr/local/src/istio-${ISTIO_VERSION}/bin" >> /home/tops/.bashrc && \
       chmod a+rx /usr/local/src/istio-${ISTIO_VERSION} && chmod a+rx /usr/local/src/istio-${ISTIO_VERSION}/bin && \
       chmod a+rx /usr/local/src/istio-${ISTIO_VERSION}/bin/istioctl && \
-      ln -s /usr/local/src/istio-${ISTIO_VERSION}/bin/istioctl /usr/local/bin/istioctl
+      ln -s /usr/local/src/istio-${ISTIO_VERSION}/bin/istioctl /usr/local/bin/istioctl && \
+      echo 'source <(istioctl completion bash)' >> /home/tops/.bashrc
 
   RUN curl -Ls "https://github.com/projectcalico/calico/releases/download/${CALICOCTL_VERSION}/calicoctl-linux-amd64" -o /usr/local/bin/calicoctl && \
       chmod a+rx /usr/local/bin/calicoctl
@@ -242,8 +268,56 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
       apt-get update -y && \
       apt-get install -y google-cloud-cli=${GCLOUD_VERSION}
 
+  RUN curl -L https://github.com/infinispan/infinispan/releases/download/${INFINISPAN_QUARKUS_VERSION}/infinispan-cli-${INFINISPAN_QUARKUS_VERSION}-linux-x86_64.zip \
+      -o /tmp/infinispan.zip && \
+      unzip -j /tmp/infinispan.zip infinispan-cli-${INFINISPAN_QUARKUS_VERSION}-linux-x86_64/infinispan-cli -d /usr/local/bin/ && \
+      mv /usr/local/bin/infinispan-cli /usr/local/bin/kubectl-infinispan && \
+      chmod +x /usr/local/bin/kubectl-infinispan && \
+      rm /tmp/infinispan.zip
+
+  RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \
+      apt-get update && \
+      apt-get install -y gh
+
   RUN chown -R tops:tops /home/tops
-  RUN apt-get install systemd
+
+  # molecule-plugins vagrant module discovery: symlink modules/ into playbooks/library/
+  RUN python3 -c "import os, molecule_plugins.vagrant as mv; \
+      src=os.path.join(os.path.dirname(mv.__file__), 'modules'); \
+      dst=os.path.join(os.path.dirname(mv.__file__), 'playbooks', 'library'); \
+      os.symlink(src, dst)" 2>/dev/null || true
+
+  RUN curl -fsSL -o /usr/local/bin/cmctl \
+      https://github.com/cert-manager/cmctl/releases/download/${CMCTL_VERSION}/cmctl_linux_amd64 \
+      && chmod +x /usr/local/bin/cmctl
+
+  # Docker engine for docker-in-docker; the daemon is NOT started at boot,
+  # run `dockerd-start` on demand inside the session.
+  RUN install -m 0755 -d /etc/apt/keyrings && \
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc && \
+      chmod a+r /etc/apt/keyrings/docker.asc && \
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null && \
+      apt-get update && \
+      apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin sudo && \
+      groupadd -f docker && usermod -aG docker tops && \
+      echo 'tops ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/tops && chmod 0440 /etc/sudoers.d/tops
+
+  RUN printf '%s\n' \
+        '#!/bin/bash' \
+        'set -e' \
+        'if docker info >/dev/null 2>&1; then echo "dockerd already running"; exit 0; fi' \
+        'echo "Starting dockerd (dind)..."' \
+        'sudo -b sh -c "dockerd >/tmp/dockerd.log 2>&1"' \
+        'for i in $(seq 1 30); do docker info >/dev/null 2>&1 && break; sleep 1; done' \
+        'docker info >/dev/null 2>&1 && echo "dockerd ready" || { echo "dockerd failed to start - see /tmp/dockerd.log"; exit 1; }' \
+      > /usr/local/bin/dockerd-start && \
+      printf '%s\n' \
+        '#!/bin/bash' \
+        'sudo pkill -TERM dockerd 2>/dev/null || true' \
+        'echo "dockerd stopped"' \
+      > /usr/local/bin/dockerd-stop && \
+      chmod +x /usr/local/bin/dockerd-start /usr/local/bin/dockerd-stop
 
   USER tops
 
@@ -254,7 +328,7 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
         curl -fsSLO "https://github.com/kubernetes-sigs/krew/releases/latest/download/${KREW}.tar.gz" && \
         tar zxvf "${KREW}.tar.gz" && \
         ./"${KREW}" install krew && \
-        echo "export PATH=${KREW_ROOT:-$HOME/.krew}/bin:$PATH" >> /home/tops/.bashrc && \
+        echo "export PATH=\${KREW_ROOT:-\$HOME/.krew}/bin:\$PATH" >> /home/tops/.bashrc && \
         export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH" && \
         kubectl krew update && \
         kubectl krew install rook-ceph && \
@@ -267,44 +341,66 @@ test -f $HISTORY_FILE || touch $HISTORY_FILE && \
   RUN steampipe plugin install steampipe && \
       steampipe plugin install aws
 
-  RUN echo "export PATH=/home/tops/utils:$PATH" >> /home/tops/.bashrc
+  RUN echo "export PATH=/home/tops/utils:\$PATH" >> /home/tops/.bashrc
+
+  RUN echo 'echo "This tops container is reachable from the host at $(hostname -i) - any port you bind to 0.0.0.0 is reachable at http://$(hostname -i):<port> (e.g. kubectl port-forward --address 0.0.0.0 -n <ns> svc/<svc> <port>:<targetPort>)"' >> /home/tops/.bashrc
 
   COPY --from=builder /tmp/lastpass-cli/build/lpass /usr/bin/
+
+  RUN curl -fsSL https://claude.ai/install.sh | bash && \
+      echo "export PATH=\$PATH:\${HOME}/.local/bin" >> /home/tops/.bashrc
+
+  RUN curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_HOME=/home/tops/.codex-install CODEX_NON_INTERACTIVE=1 sh
+
   WORKDIR /workspace
 
 EOF
 } && \
+LIBVIRT_DOCKER_ARGS="" && \
+if [ -S "/var/run/libvirt/libvirt-sock" ] && [ -c "/dev/kvm" ]; then
+  LIBVIRT_GID=$(stat -c '%g' /var/run/libvirt/libvirt-sock)
+  LIBVIRT_DOCKER_ARGS="-v /var/run/libvirt/libvirt-sock:/var/run/libvirt/libvirt-sock --device /dev/kvm:/dev/kvm --group-add ${LIBVIRT_GID} -e LIBVIRT_DEFAULT_URI=qemu:///system"
+fi && \
 echo "ContainerName ${CONTAINER_NAME}" && \
 docker run \
   --rm \
   --privileged \
-  -v ${_arg_workspace_path}:/workspace \
+  -v ${_arg_workspace_path}:${CONTAINER_WORKDIR} \
   -v ${_arg_utils_path}:/home/tops/utils \
   -v ${HOME}/.aws/credentials:/home/tops/.aws/credentials:ro \
   -v ${HOME}/.aws/config:/home/tops/.aws/config:ro \
   -v ${HOME}/.config/helm:/home/tops/.config/helm \
+  -v ${HOME}/.claude:/home/tops/.claude \
+  -v ${HOME}/.claude.json:/home/tops/.claude.json \
+  -v ${HOME}/.codex:/home/tops/.codex \
   -v ${HOME}/.config/VirtualBox:/home/tops/.config/VirtualBox \
   -v ${HOME}/.config/gcloud:/home/tops/.config/gcloud:ro \
   -v ${HOME}/.kube:/home/tops/.kube:ro \
   -v ${HOME}/.terraformrc:/home/tops/.terraformrc:ro \
   -v ${HOME}/.terraform.d/plugin-cache:/home/tops/.terraform.d/plugin-cache \
-  -v ${HOME}/.vault_password_file:/home/tops/.vault_password_file \
+  -v ${HOME}/.vault_password_file:/home/tops/.vault_password_file:ro \
+  -v ${HOME}/.crypt_password_file:/home/tops/.crypt_password_file:ro
   -v ${HOME}/.vagrant.d:/home/tops/.vagrant.d \
+  -v ${HOME}/.ansible/tmp:/home/tops/.ansible/tmp \
   -v ${HOME}/VirtualBox\ VMs:/home/tops/VirtualBox\ VMs \
   -v ${HOME}/.terraformStatesBucketGCS.json:/home/tops/.terraformStatesBucketGCS.json:ro \
   -v ${ANSIBLE_CFG}:/home/tops/.ansible.cfg \
   -v ${HISTORY_FILE}:/home/tops/.bash_history:rw \
   -v ${SSH_AUTH_SOCK}:${MY_SSH_AUTH_SOCK}:rw \
-  -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
+  -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
+  -v /var/lib/docker \
+  --cgroupns=host \
   -v /tmp/tops:/tmp/tops \
+  ${LIBVIRT_DOCKER_ARGS} \
   --device /dev/vboxdrv:/dev/vboxdrv \
   --env SSH_AUTH_SOCK=${MY_SSH_AUTH_SOCK} \
   --env PROMPT_COMMAND='history -a' \
+  --env CONTAINER_NAME=${CONTAINER_NAME} \
   --name ${CONTAINER_NAME} \
+  -w ${CONTAINER_WORKDIR} \
   --env-file $_arg_env_file \
   --platform="linux/amd64" \
   -ti \
-  -p 9090-9095 \
   tops
 # ^^^  TERMINATE YOUR CODE BEFORE THE BOTTOM ARGBASH MARKER  ^^^
 
