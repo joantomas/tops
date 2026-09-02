@@ -333,6 +333,8 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
 
   RUN mkdir -p ~/.aws/cli
 
+  RUN mkdir -p ~/.ansible
+
   RUN steampipe plugin install steampipe && \
       steampipe plugin install aws
 
