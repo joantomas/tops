@@ -52,7 +52,7 @@ LIBVIRT_BUILD_ARG=""
 if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=${LIBVIRT_GID_BUILD}"; fi
 
 { docker buildx build --platform=linux/amd64 -t tops --build-arg USER_ID=${USER_ID} ${LIBVIRT_BUILD_ARG} -f - . <<-\EOF
-  FROM amd64/ubuntu:22.04 AS builder
+  FROM amd64/ubuntu:24.04 AS builder
   ARG LASTPASS_VERSION=1.6.1
   RUN apt-get update && \
       apt-get -y install \
@@ -74,15 +74,14 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
       tar -zx -C /tmp/lastpass-cli --strip-components=1
   RUN cd /tmp/lastpass-cli && export CFLAGS="-fcommon" && make
 
-  FROM amd64/ubuntu:22.04
+  FROM amd64/ubuntu:24.04
 
-  ARG ANSIBLE_VERSION=9.8.0
-  ARG ANSIBLE_COMMUNITY_GENERAL_COLLECTION_VERSION=11.2.0
+  ARG ANSIBLE_CORE_VERSION=2.18.6
   ARG CALICOCTL_VERSION=v3.29.5
   ARG CMCTL_VERSION=v2.5.0
   ARG DELTA_VERSION=0.18.1
   ARG DRIFTCTL_VERSION=0.40.0
-  ARG GOLANG_VERSION=1.18
+  ARG GOLANG_VERSION=1.22
   ARG HELM_VERSION=3.10.1
   ARG ISTIO_VERSION=1.27.1
   ARG KUBECTL_VERSION=1.32.8
@@ -212,10 +211,10 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
   RUN curl -Ls https://github.com/derailed/k9s/releases/download/v${K9S_VERSION}/k9s_Linux_amd64.tar.gz  | tar -zx k9s && \
       mv k9s /usr/local/bin/
 
-  RUN pip3 install \
+  RUN pip3 install --break-system-packages \
               "molecule[lint]" \
               ansible-lint \
-              ansible==${ANSIBLE_VERSION} \
+              ansible-core==${ANSIBLE_CORE_VERSION} \
               distlib \
               boto3 \
               kubernetes==${KUBERNETES_PYTHON_VERSION} \
@@ -249,8 +248,6 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
   RUN mkdir -p /home/tops/.ssh && \
       echo 'PubkeyAcceptedKeyTypes +ssh-dss-cert-v01@openssh.com' >> /home/tops/.ssh/config && \
       ssh-keyscan -t ecdsa-sha2-nistp256 github.com >> /home/tops/.ssh/known_hosts
-
-  RUN rm -rf /usr/local/lib/python3.10/dist-packages/ansible_collections/community/general
 
   RUN curl -Ls "https://github.com/Shopify/kubeaudit/releases/download/v0.22.1/kubeaudit_0.22.1_linux_amd64.tar.gz" -o /tmp/kubeaudit_0.22.1_linux_amd64.tar.gz && \
       cd /tmp && \
@@ -333,8 +330,6 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
         kubectl krew update && \
         kubectl krew install rook-ceph && \
         kubectl krew install slice
-
-  RUN ansible-galaxy collection install community.general:==${ANSIBLE_COMMUNITY_GENERAL_COLLECTION_VERSION}
 
   RUN mkdir -p ~/.aws/cli
 
