@@ -77,6 +77,8 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
   FROM amd64/ubuntu:24.04
 
   ARG ANSIBLE_CORE_VERSION=2.18.6
+  ARG ANSIBLE_POSIX_VERSION=1.6.2
+  ARG ANSIBLE_UTILS_VERSION=5.1.2
   ARG CALICOCTL_VERSION=v3.29.5
   ARG CMCTL_VERSION=v2.5.0
   ARG DELTA_VERSION=0.18.1
@@ -334,6 +336,10 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
   RUN mkdir -p ~/.aws/cli
 
   RUN mkdir -p ~/.ansible
+
+  RUN ansible-galaxy collection install \
+        ansible.posix:==${ANSIBLE_POSIX_VERSION} \
+        ansible.utils:==${ANSIBLE_UTILS_VERSION}
 
   RUN steampipe plugin install steampipe && \
       steampipe plugin install aws
