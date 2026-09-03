@@ -105,7 +105,8 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
   ARG NODE_VERSION=22
   ARG USER_ID
 
-  RUN useradd -u ${USER_ID} -s /bin/bash -d /home/tops -m tops && \
+  RUN if getent passwd ${USER_ID} > /dev/null; then userdel -r "$(getent passwd ${USER_ID} | cut -d: -f1)"; fi && \
+      useradd -u ${USER_ID} -s /bin/bash -d /home/tops -m tops && \
       if [ -n "${LIBVIRT_GID}" ]; then groupadd -g ${LIBVIRT_GID} libvirt 2>/dev/null || true; usermod -aG libvirt tops; fi
 
   RUN apt-get update && \
