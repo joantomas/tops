@@ -214,7 +214,10 @@ if [ -n "$LIBVIRT_GID_BUILD" ]; then LIBVIRT_BUILD_ARG="--build-arg LIBVIRT_GID=
   RUN curl -Ls https://github.com/derailed/k9s/releases/download/v${K9S_VERSION}/k9s_Linux_amd64.tar.gz  | tar -zx k9s && \
       mv k9s /usr/local/bin/
 
-  RUN pip3 install --break-system-packages \
+  # Debian's python3-cryptography has no pip RECORD, so pip can't upgrade it in place;
+  # install the newer copy alongside it in /usr/local, which shadows the apt one.
+  RUN pip3 install --break-system-packages --ignore-installed cryptography && \
+      pip3 install --break-system-packages \
               "molecule[lint]" \
               ansible-lint \
               ansible-core==${ANSIBLE_CORE_VERSION} \
